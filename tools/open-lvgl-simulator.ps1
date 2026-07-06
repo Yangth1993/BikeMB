@@ -1,4 +1,5 @@
 param(
+  [string]$Driver = "SDL2",
   [switch]$Build
 )
 
@@ -19,16 +20,29 @@ if (-not $Build) {
   exit 0
 }
 
-if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
-  Write-Error "cmake was not found. Install CMake and retry."
+function Convert-ToMsysPath($WindowsPath) {
+  $Resolved = (Resolve-Path $WindowsPath).Path
+  $Drive = $Resolved.Substring(0, 1).ToLowerInvariant()
+  $Tail = $Resolved.Substring(2).Replace("\", "/")
+  return "/$Drive$Tail"
+}
+
+$MsysBash = "C:\msys64\usr\bin\bash.exe"
+if (-not (Test-Path $MsysBash)) {
+  Write-Error "MSYS2 bash was not found at $MsysBash. Install MSYS2 and retry."
 }
 
 Push-Location $SimulatorDir
 try {
-  cmake -S . -B build
-  cmake --build build
+  $MsysSimulatorDir = Convert-ToMsysPath $SimulatorDir
+  & $MsysBash -lc "export PATH=/mingw64/bin:`$PATH && cd '$MsysSimulatorDir' && make LV_DRIVER=$Driver CC=gcc"
+  if ($LASTEXITCODE -ne 0) {
+    throw "official LVGL simulator Makefile build failed with exit code ${LASTEXITCODE}"
+  }
 
-  $Executables = Get-ChildItem -Path "build" -Recurse -Filter "*.exe" | Sort-Object LastWriteTime -Descending
+  $Executables = @()
+  $Executables += Get-ChildItem -Path "build\bin" -Filter "*.exe" -ErrorAction SilentlyContinue
+  $Executables += Get-ChildItem -Path "build\bin" -Filter "demo" -ErrorAction SilentlyContinue
   if ($Executables.Count -eq 0) {
     Write-Host "Build finished, but no .exe was found under $SimulatorDir\build."
     exit 0

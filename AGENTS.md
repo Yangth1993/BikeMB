@@ -88,6 +88,25 @@ This file is for agent collaboration, not human onboarding. Keep actions narrow,
   - power/reset behavior
   - protocol waveforms when relevant
 
+## Sleep Handoff Rule
+
+When the user says `我睡觉了，下次见`:
+
+- Stop starting new implementation work.
+- Save a short context snapshot to `docs/session-handoff.md`.
+- Include only:
+  - current objective
+  - latest stable git commit
+  - uncommitted files, if any
+  - verified commands/results
+  - next recommended step
+  - known risks/blockers
+- Run the smallest relevant tests before committing if code changed.
+- Commit all intentional project changes.
+- Do not commit ignored local artifacts such as `.pio/`, `tools/lv_port_pc_vscode/`, `.vscode/`, `TrueDebug/`, or `ESP32_Datas/`.
+- Final reply should remind the user what to do next after reboot.
+- Keep the handoff concise enough to read in under one minute.
+
 ## High-Risk Areas
 
 Be extra careful with changes involving:
