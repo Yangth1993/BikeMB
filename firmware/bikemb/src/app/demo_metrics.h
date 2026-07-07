@@ -14,4 +14,4 @@ struct DemoMetrics {
 };
 
 void DemoMetrics_Init();
-DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs);
+DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs, uint32_t renderWorkMs);

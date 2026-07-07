@@ -42,7 +42,7 @@ void loop() {
 
   LvglPort_Tick(deltaMs);
   DashboardApp_Tick(now);
-  LvglPort_Run();
+  DashboardApp_SetRenderWorkMs(LvglPort_Run());
 
   delay(5);
 #endif

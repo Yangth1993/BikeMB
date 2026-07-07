@@ -58,6 +58,8 @@ void LvglPort_Tick(unsigned long deltaMs) {
   lv_tick_inc(deltaMs);
 }
 
-void LvglPort_Run() {
+uint32_t LvglPort_Run() {
+  const uint32_t startUs = micros();
   lv_timer_handler();
+  return (micros() - startUs + 999U) / 1000U;
 }

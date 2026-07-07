@@ -1,6 +1,7 @@
 #include "dashboard_view_core.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "lvgl.h"
 
 enum {
@@ -26,6 +27,19 @@ static void apply_base_style(lv_obj_t *obj, lv_color_t bg) {
   lv_obj_set_style_bg_color(obj, bg, 0);
   lv_obj_set_style_border_width(obj, 0, 0);
   lv_obj_set_style_radius(obj, 18, 0);
+}
+
+static void set_label_text_if_changed(lv_obj_t *label, const char *text) {
+  const char *current = lv_label_get_text(label);
+  if (current == NULL || strcmp(current, text) != 0) {
+    lv_label_set_text(label, text);
+  }
+}
+
+static void set_bar_value_if_changed(lv_obj_t *bar, int32_t value) {
+  if (lv_bar_get_value(bar) != value) {
+    lv_bar_set_value(bar, value, LV_ANIM_OFF);
+  }
 }
 
 static void create_stat_row(lv_obj_t *parent,
@@ -162,27 +176,30 @@ void BikeMbDashboardView_Create(void) {
 
 void BikeMbDashboardView_Update(const BikeMbDashboardMetrics *metrics) {
   char text[32];
+  const int32_t cpu_load = (int32_t)(metrics->cpuLoad + 0.5f);
 
-  snprintf(text, sizeof(text), "CPU:%3d%%", (int)(metrics->cpuLoad + 0.5f));
-  lv_label_set_text(g_cpu_label, text);
-  lv_bar_set_value(g_cpu_bar, (int)(metrics->cpuLoad + 0.5f), LV_ANIM_OFF);
+  snprintf(text, sizeof(text), "CPU:%3d%%", (int)cpu_load);
+  set_label_text_if_changed(g_cpu_label, text);
+  set_bar_value_if_changed(g_cpu_bar, cpu_load);
 
   const float heap_load = metrics->heapTotal == 0
       ? 0.0f
       : 100.0f * (metrics->heapTotal - metrics->heapFree) / metrics->heapTotal;
-  snprintf(text, sizeof(text), "MEM:%3d%%", (int)(heap_load + 0.5f));
-  lv_label_set_text(g_mem_label, text);
-  lv_bar_set_value(g_mem_bar, (int)(heap_load + 0.5f), LV_ANIM_OFF);
+  const int32_t mem_load = (int32_t)(heap_load + 0.5f);
+  snprintf(text, sizeof(text), "MEM:%3d%%", (int)mem_load);
+  set_label_text_if_changed(g_mem_label, text);
+  set_bar_value_if_changed(g_mem_bar, mem_load);
 
   snprintf(text, sizeof(text), "FPS:%4.1f", (double)metrics->fps);
-  lv_label_set_text(g_fps_label, text);
+  set_label_text_if_changed(g_fps_label, text);
 
   const float psram_load = metrics->psramTotal == 0
       ? 0.0f
       : 100.0f * (metrics->psramTotal - metrics->psramFree) / metrics->psramTotal;
-  snprintf(text, sizeof(text), "PS:%3d%%", (int)(psram_load + 0.5f));
-  lv_label_set_text(g_psram_label, text);
-  lv_bar_set_value(g_psram_bar, (int)(psram_load + 0.5f), LV_ANIM_OFF);
+  const int32_t psram_load_int = (int32_t)(psram_load + 0.5f);
+  snprintf(text, sizeof(text), "PS:%3d%%", (int)psram_load_int);
+  set_label_text_if_changed(g_psram_label, text);
+  set_bar_value_if_changed(g_psram_bar, psram_load_int);
 
   lv_obj_set_pos(g_orb, metrics->orbX, metrics->orbY);
 }

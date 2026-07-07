@@ -1,87 +1,90 @@
-# BikeMB 软件框架
+# BikeMB Software Architecture
 
-本文档描述 BikeMB 当前建议的软件框架。目标是保留 bring-up 已验证的底层驱动，同时把正式工程拆成适合继续扩展的应用结构。
+This document captures the current BikeMB firmware architecture for quick agent and developer reference.
 
-## 分层目标
-
-- `bringup` 负责硬件验证，不继续承载正式应用逻辑
-- `bikemb` 负责正式 demo 与后续应用扩展
-- `platform` 层负责板级和显示/触摸适配
-- `app` 层负责页面、demo 数据和后续业务模块
-
-## 软件框架图
+## Layer Diagram
 
 ```mermaid
 flowchart TD
-    A["main.cpp<br/>system bootstrap"] --> B["platform::board<br/>serial, i2c, exio, backlight"]
-    A --> C["platform::lvgl_port<br/>lv_init, draw buffer, flush, tick"]
-    A --> D["app::dashboard_app<br/>screen lifecycle + update loop"]
+  HW["Hardware<br/>ESP32-S3<br/>ST77916 round LCD<br/>Backlight / GPIO / QSPI-SPI LCD"]
 
-    B --> E["drivers::display_st77916<br/>QSPI LCD driver"]
-    B --> F["drivers::i2c_driver"]
-    B --> G["drivers::tca9554"]
-    B -. optional .-> H["drivers::touch_cst816"]
+  BSP["Board Support<br/>BoardSupport_Init()<br/>ST77916_Init()<br/>Backlight_Init()"]
 
-    D --> I["app::dashboard_view<br/>labels, bars, animated objects"]
-    D --> J["app::demo_metrics<br/>fps, cpu load estimate, heap, psram"]
+  LCD["LCD Driver<br/>Display_ST77916.cpp<br/>LCD_addWindow()<br/>RGB565 byte-swap<br/>esp_lcd_panel_draw_bitmap()"]
 
-    C --> E
-    J --> I
+  LVGLPORT["LVGL Port<br/>lvgl_port.cpp<br/>lv_init()<br/>static lv_disp_drv_t<br/>internal RAM double buffers<br/>FlushCallback()<br/>LvglPort_Tick()<br/>LvglPort_Run()"]
+
+  LVGL["LVGL Core<br/>lv_timer_handler()<br/>draw buffer<br/>invalid areas<br/>widget rendering"]
+
+  APP["Application Scheduler<br/>main.cpp<br/>Arduino setup()/loop()<br/>DashboardApp_Tick()<br/>stable 33ms dashboard cadence"]
+
+  METRICS["Demo Metrics<br/>demo_metrics.cpp<br/>FPS counter<br/>GUI render-budget load<br/>heap / psram<br/>orb position"]
+
+  LOGGING["Serial / Diagnostics<br/>startup logs only in normal dashboard<br/>no periodic Serial.printf in hot path<br/>display diagnostic guarded by BIKE_MB_RUN_DISPLAY_DIAGNOSTIC"]
+
+  VIEWWRAP["Firmware UI Adapter<br/>dashboard_view.cpp<br/>DemoMetrics to BikeMbDashboardMetrics"]
+
+  UICORE["Shared UI Core<br/>dashboard_view_core.c/h<br/>dashboard widgets<br/>change-guarded labels/bars<br/>round background + non-clipping content layer"]
+
+  SIMTOOLS["PC Simulator Tools<br/>setup-lvgl-simulator.ps1<br/>open-lvgl-simulator.ps1<br/>sync-bikemb-simulator-ui.ps1"]
+
+  SIM["Official LVGL Simulator<br/>tools/lv_port_pc_vscode/ ignored<br/>ui/bikemb_dashboard.c<br/>ui/dashboard_view_core.c"]
+
+  TESTS["Lightweight Contract Tests<br/>tools/tests/<br/>driver / LVGL port / simulator / performance contracts"]
+
+  HW --> BSP --> LCD --> LVGLPORT --> LVGL
+  APP --> LVGLPORT
+  APP --> METRICS --> VIEWWRAP --> UICORE --> LVGL
+  APP --> LOGGING
+  LVGLPORT --> LCD
+  SIMTOOLS --> SIM --> UICORE
+  TESTS -. validates .-> LCD
+  TESTS -. validates .-> LVGLPORT
+  TESTS -. validates .-> UICORE
+  TESTS -. validates .-> SIMTOOLS
 ```
 
-## `bikemb` 目录建议
+## Runtime Flow
 
-```text
-firmware/bikemb/
-  include/
-    lv_conf.h
-  src/
-    main.cpp
-    app/
-      dashboard_app.cpp
-      dashboard_app.h
-      dashboard_view.cpp
-      dashboard_view.h
-      demo_metrics.cpp
-      demo_metrics.h
-    platform/
-      board_support.cpp
-      board_support.h
-      lvgl_port.cpp
-      lvgl_port.h
-    drivers/
-      Display_ST77916.cpp
-      Display_ST77916.h
-      I2C_Driver.cpp
-      I2C_Driver.h
-      TCA9554PWR.cpp
-      TCA9554PWR.h
-      esp_lcd_st77916.c
-      esp_lcd_st77916.h
+```mermaid
+sequenceDiagram
+  participant Loop as Arduino loop()
+  participant App as DashboardApp
+  participant Metrics as DemoMetrics
+  participant View as DashboardView/Core
+  participant LVGL as LVGL
+  participant LCD as LCD_addWindow/ST77916
+
+  Loop->>LVGL: LvglPort_Tick(deltaMs)
+  Loop->>App: DashboardApp_Tick(now)
+  App->>Metrics: DemoMetrics_Update(renderWorkMs)
+  Metrics-->>App: fps/cpu/heap/orb
+  App->>View: DashboardView_Update(metrics)
+  View->>LVGL: update changed labels/bars + orb position
+  Loop->>LVGL: LvglPort_Run()
+  LVGL->>LCD: FlushCallback(area, color)
+  LCD-->>LVGL: lv_disp_flush_ready()
+  LVGL-->>Loop: renderWorkMs
+  Loop->>App: DashboardApp_SetRenderWorkMs(renderWorkMs)
 ```
 
-## 运行流程
+## Notes
 
-1. `main.cpp` 启动串口和板级支持
-2. 初始化 I2C、EXIO、背光、LCD
-3. 初始化 `LVGL`
-4. 注册显示 flush 回调
-5. 创建 dashboard 页面
-6. 主循环中持续：
-   - 维护 `lv_tick`
-   - 更新 demo metrics
-   - 刷新 dashboard
-   - 调用 `lv_timer_handler`
+- The LCD driver currently uses a synchronous flush contract. Do not push refresh cadence aggressively until the LCD transfer path is measured or made asynchronous.
+- The dashboard CPU number is a GUI render-budget estimate, not a FreeRTOS system-wide CPU utilization metric.
+- The dashboard hot path must not emit periodic serial logs. USB serial backpressure can stall the main loop and make FPS collapse after the first logging interval.
+- The proven board cadence is currently the stable 33ms dashboard update interval. 16ms/60Hz needs async flush or measured LCD transfer evidence first.
+- `dashboard_view_core.c/h` is shared by firmware and the official PC LVGL simulator.
+- `tools/lv_port_pc_vscode/` is an ignored official checkout and should not be committed.
 
-## 当前第一版页面目标
+## How To View
 
-第一版 `bikemb` 页面尽量复刻当前 bring-up dashboard 的信息结构：
+This file is Markdown with Mermaid diagrams.
 
-- 标题
-- `CPU`
-- `FPS`
-- `MEM`
-- `PSRAM`
-- 一个简单动效区域
+Recommended viewers:
 
-这样可以先形成稳定 demo 工程，再在后续把 demo 数据替换为真实骑行数据。
+- VS Code or Cursor: open this file, then use Markdown Preview.
+- GitHub: Mermaid diagrams render automatically when the file is pushed.
+- Typora or Obsidian: both can render Markdown; enable Mermaid support if it is disabled.
+
+If a viewer shows the Mermaid code block as plain text, install or enable Mermaid preview support for that editor.

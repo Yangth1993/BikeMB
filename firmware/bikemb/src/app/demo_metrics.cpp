@@ -40,7 +40,9 @@ void DemoMetrics_Init() {
   g_lastFpsAt = millis();
 }
 
-DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs) {
+DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs, uint32_t renderWorkMs) {
+  (void)elapsedMs;
+
   ++g_frameCount;
   UpdateOrb();
 
@@ -51,7 +53,7 @@ DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs) {
     g_lastFpsAt = now;
   }
 
-  const float frameLoad = min(100.0f, elapsedMs * 100.0f / max<uint32_t>(1, targetFrameMs));
+  const float frameLoad = min(100.0f, renderWorkMs * 100.0f / max<uint32_t>(1, targetFrameMs));
   g_cpuLoad = 0.85f * g_cpuLoad + 0.15f * frameLoad;
 
   DemoMetrics metrics{};
