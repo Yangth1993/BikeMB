@@ -20,6 +20,12 @@ if (-not $Build) {
   exit 0
 }
 
+$SyncScript = Join-Path $PSScriptRoot "sync-bikemb-simulator-ui.ps1"
+& powershell -NoProfile -ExecutionPolicy Bypass -File $SyncScript
+if ($LASTEXITCODE -ne 0) {
+  throw "BikeMB simulator UI sync failed with exit code ${LASTEXITCODE}"
+}
+
 function Convert-ToMsysPath($WindowsPath) {
   $Resolved = (Resolve-Path $WindowsPath).Path
   $Drive = $Resolved.Substring(0, 1).ToLowerInvariant()

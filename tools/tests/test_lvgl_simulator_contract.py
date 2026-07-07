@@ -3,6 +3,12 @@ from contract_helpers import check, read_repo_text
 
 SETUP_SCRIPT = "tools/setup-lvgl-simulator.ps1"
 OPEN_SCRIPT = "tools/open-lvgl-simulator.ps1"
+SYNC_SCRIPT = "tools/sync-bikemb-simulator-ui.ps1"
+BIKEMB_SIM_UI = "simulator/bikemb_ui/bikemb_dashboard.c"
+BIKEMB_SIM_UI_HEADER = "simulator/bikemb_ui/bikemb_dashboard.h"
+SHARED_DASHBOARD_CORE = "firmware/bikemb/src/app/dashboard_view_core.c"
+SHARED_DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
+FIRMWARE_DASHBOARD_WRAPPER = "firmware/bikemb/src/app/dashboard_view.cpp"
 GITIGNORE = ".gitignore"
 
 
@@ -48,8 +54,81 @@ def test_simulator_open_script_builds_existing_checkout_only() -> None:
     check("Start-Process" in source, "Open script must open the built PC simulator app for visual review.")
 
 
+def test_simulator_open_script_syncs_bikemb_ui_before_build() -> None:
+    source = read_repo_text(OPEN_SCRIPT)
+
+    check(
+        "sync-bikemb-simulator-ui.ps1" in source,
+        "Open script must sync BikeMB UI into the official simulator checkout before building.",
+    )
+
+
+def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
+    sync_source = read_repo_text(SYNC_SCRIPT)
+    ui_source = read_repo_text(BIKEMB_SIM_UI)
+    header_source = read_repo_text(BIKEMB_SIM_UI_HEADER)
+
+    check("simulator\\bikemb_ui" in sync_source, "Sync script must copy the tracked BikeMB UI source.")
+    check("dashboard_view_core.c" in sync_source, "Sync script must copy the shared dashboard core into the simulator ui directory.")
+    check("dashboard_view_core.h" in sync_source, "Sync script must copy the shared dashboard core header into the simulator ui directory.")
+    check("lv_port_pc_vscode" in sync_source, "Sync script must target the official LVGL simulator checkout.")
+    check("main\\src\\main.c" in sync_source, "Sync script must patch the official simulator main.c entry.")
+    check("bikemb_dashboard_create();" in sync_source, "Sync script must switch simulator startup to BikeMB dashboard.")
+    check("#define BIKEMB_SIMULATOR_UI 1" in sync_source, "Sync script must enable BikeMB UI by default.")
+
+    check("void bikemb_dashboard_create(void)" in header_source, "BikeMB simulator UI must expose a C entry point.")
+    check("bikemb_dashboard_create" in ui_source, "BikeMB simulator UI implementation must define the entry point.")
+    check("lv_timer_create" in ui_source, "BikeMB simulator UI must update demo metrics without modifying simulator main loop.")
+    check("BikeMbDashboardView_Create();" in ui_source, "BikeMB simulator UI must create the shared dashboard view.")
+    check("BikeMbDashboardView_Update(&metrics);" in ui_source, "BikeMB simulator UI must update the shared dashboard view.")
+
+
+def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
+    core_source = read_repo_text(SHARED_DASHBOARD_CORE)
+    core_header = read_repo_text(SHARED_DASHBOARD_CORE_HEADER)
+    firmware_wrapper = read_repo_text(FIRMWARE_DASHBOARD_WRAPPER)
+    simulator_glue = read_repo_text(BIKEMB_SIM_UI)
+
+    check("BikeMbDashboardMetrics" in core_header, "Shared dashboard core must expose a platform-neutral metrics struct.")
+    check("BikeMbDashboardView_Create" in core_header, "Shared dashboard core must expose a create entry point.")
+    check("BikeMbDashboardView_Update" in core_header, "Shared dashboard core must expose an update entry point.")
+    check("BIKEMB LIVE" in core_source, "Shared dashboard core must own the dashboard title rendering.")
+    check("LVGL DEMO DASHBOARD" in core_source, "Shared dashboard core must own the dashboard subtitle rendering.")
+
+    check("dashboard_view_core.h" in firmware_wrapper, "Firmware dashboard wrapper must include the shared dashboard core.")
+    check("BikeMbDashboardView_Create();" in firmware_wrapper, "Firmware dashboard create wrapper must delegate to shared core.")
+    check("BikeMbDashboardView_Update(&viewMetrics);" in firmware_wrapper, "Firmware dashboard update wrapper must delegate to shared core.")
+    check("lv_label_create" not in firmware_wrapper, "Firmware wrapper must not duplicate LVGL widget creation.")
+
+    check("dashboard_view_core.h" in simulator_glue, "Simulator glue must include the shared dashboard core.")
+    check("BikeMbDashboardView_Create();" in simulator_glue, "Simulator glue must delegate dashboard creation to shared core.")
+    check("BikeMbDashboardView_Update(&metrics);" in simulator_glue, "Simulator glue must delegate dashboard updates to shared core.")
+    check("BIKEMB LIVE" not in simulator_glue, "Simulator glue must not duplicate dashboard title rendering.")
+
+
+def test_dashboard_content_layer_does_not_clip_text() -> None:
+    core_source = read_repo_text(SHARED_DASHBOARD_CORE)
+
+    check(
+        "lv_obj_set_style_clip_corner" not in core_source,
+        "Dashboard content must not use rounded-corner clipping because it can cut labels on the round display edge.",
+    )
+    check(
+        "LV_OPA_TRANSP" in core_source,
+        "Dashboard should keep a transparent, non-clipping content layer above the round background.",
+    )
+    check(
+        "lv_obj_move_foreground" in core_source,
+        "Dashboard stat labels should stay above progress bars to avoid visual overlap.",
+    )
+
+
 if __name__ == "__main__":
     test_simulator_setup_uses_official_lvgl_repository()
     test_simulator_checkout_is_not_committed_as_project_source()
     test_simulator_open_script_builds_existing_checkout_only()
+    test_simulator_open_script_syncs_bikemb_ui_before_build()
+    test_bikemb_simulator_ui_uses_official_ui_mechanism()
+    test_dashboard_view_core_is_shared_by_firmware_and_simulator()
+    test_dashboard_content_layer_does_not_clip_text()
     print("PASS test_lvgl_simulator_contract")
