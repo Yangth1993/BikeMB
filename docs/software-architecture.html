@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BikeMB 固件架构说明</title>
+  <style>
+    :root {
+      --bg: #07100f;
+      --bg-2: #0c1714;
+      --panel: rgba(18, 31, 28, .86);
+      --panel-2: rgba(9, 18, 17, .94);
+      --paper: #f4ead7;
+      --text: #eef8ed;
+      --muted: #9aaca5;
+      --line: rgba(151, 184, 164, .23);
+      --cyan: #2de2d0;
+      --lime: #c8f35d;
+      --amber: #f0ae49;
+      --red: #ff6f61;
+      --shadow: 0 28px 80px rgba(0, 0, 0, .42);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% -10%, rgba(45, 226, 208, .22), transparent 34rem),
+        radial-gradient(circle at 90% 8%, rgba(200, 243, 93, .14), transparent 32rem),
+        linear-gradient(135deg, #050807 0%, var(--bg) 40%, #11130d 100%);
+      font-family: "Noto Serif SC", "LXGW WenKai", "Microsoft YaHei", serif;
+      line-height: 1.68;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .24;
+      background-image:
+        linear-gradient(rgba(244, 234, 215, .06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(244, 234, 215, .05) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: radial-gradient(circle at 50% 10%, black, transparent 78%);
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    code {
+      color: var(--lime);
+      background: rgba(200, 243, 93, .09);
+      border: 1px solid rgba(200, 243, 93, .18);
+      border-radius: 7px;
+      padding: .12rem .38rem;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: .92em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 16px 0 0;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(45, 226, 208, .22);
+      background: #06100f;
+      box-shadow: inset 0 0 32px rgba(45, 226, 208, .05);
+    }
+
+    pre code {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #d7ffe8;
+      white-space: pre;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 28px;
+      width: min(1480px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 30px 0 64px;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      min-height: calc(100vh - 48px);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(18, 31, 28, .92), rgba(6, 13, 12, .86));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: grid;
+      gap: 6px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #04100e;
+      font-weight: 900;
+      letter-spacing: -.08em;
+      background:
+        conic-gradient(from 210deg, var(--cyan), var(--lime), var(--amber), var(--cyan));
+      box-shadow: 0 0 44px rgba(45, 226, 208, .28);
+    }
+
+    .brand h1 {
+      margin: 6px 0 0;
+      font-size: 20px;
+      line-height: 1.1;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      font-size: 14px;
+    }
+
+    .nav a {
+      padding: 8px 10px;
+      border-radius: 12px;
+      color: #dcece6;
+      border: 1px solid transparent;
+    }
+
+    .nav a:hover {
+      color: var(--lime);
+      background: rgba(200, 243, 93, .08);
+      border-color: rgba(200, 243, 93, .22);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    .hero {
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      padding: 44px;
+      background:
+        linear-gradient(145deg, rgba(16, 32, 29, .96), rgba(9, 17, 15, .88)),
+        radial-gradient(circle at 78% 28%, rgba(45, 226, 208, .25), transparent 22rem);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      right: -90px;
+      top: -90px;
+      border-radius: 50%;
+      border: 1px solid rgba(45, 226, 208, .22);
+      background:
+        radial-gradient(circle, transparent 34%, rgba(45, 226, 208, .16) 35%, transparent 36%),
+        repeating-conic-gradient(from 20deg, rgba(200, 243, 93, .22) 0deg 5deg, transparent 5deg 13deg);
+      opacity: .75;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 12px;
+      border: 1px solid rgba(45, 226, 208, .28);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: rgba(45, 226, 208, .07);
+      font-size: 13px;
+    }
+
+    .hero h2 {
+      position: relative;
+      z-index: 1;
+      max-width: 820px;
+      margin: 24px 0 0;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: .95;
+      letter-spacing: -.06em;
+    }
+
+    .hero p {
+      position: relative;
+      z-index: 1;
+      max-width: 760px;
+      color: #c3d6cf;
+      font-size: 18px;
+      margin: 22px 0 0;
+    }
+
+    .hero-stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .stat {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(4, 12, 11, .62);
+      border: 1px solid var(--line);
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--lime);
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    section {
+      margin-top: 28px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      box-shadow: 0 18px 60px rgba(0, 0, 0, .24);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 16px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -.03em;
+    }
+
+    .section-head p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(5, 12, 11, .52);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      color: var(--cyan);
+      font-size: 17px;
+    }
+
+    .card p, .card li {
+      color: #bfcec8;
+      margin: 0;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .node {
+      min-height: 116px;
+      position: relative;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(45, 226, 208, .26);
+      background: linear-gradient(160deg, rgba(45, 226, 208, .09), rgba(5, 12, 11, .76));
+    }
+
+    .node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -14px;
+      top: 42px;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #07100f;
+      background: var(--lime);
+      font-weight: 900;
+      z-index: 2;
+    }
+
+    .node b {
+      color: var(--paper);
+    }
+
+    .node span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(5, 12, 11, .54);
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    th {
+      color: var(--cyan);
+      font-weight: 700;
+      background: rgba(45, 226, 208, .08);
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(240, 174, 73, .24);
+      color: var(--amber);
+      background: rgba(240, 174, 73, .08);
+      font-size: 12px;
+      margin: 2px 4px 2px 0;
+      white-space: nowrap;
+    }
+
+    .callout {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 111, 97, .28);
+      background: rgba(255, 111, 97, .08);
+      color: #ffd8d4;
+    }
+
+    .callout.good {
+      border-color: rgba(200, 243, 93, .26);
+      background: rgba(200, 243, 93, .08);
+      color: #ecffd0;
+    }
+
+    .toc-tag {
+      display: inline-block;
+      margin-left: 6px;
+      color: var(--amber);
+      font-size: 11px;
+    }
+
+    .footer {
+      margin-top: 28px;
+      padding: 20px 4px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 1080px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: relative;
+        top: 0;
+        min-height: auto;
+      }
+
+      .nav {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100vw - 24px, 1480px);
+        padding-top: 12px;
+      }
+
+      .hero, section {
+        padding: 22px;
+        border-radius: 22px;
+      }
+
+      .hero-stats, .grid, .grid.two, .flow, .matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .node::after {
+        display: none !important;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">BM</div>
+        <h1>BikeMB 固件架构</h1>
+        <p>UI / 音频输出 / 语音识别 / 固件分区</p>
+      </div>
+      <nav class="nav">
+        <a href="#runtime">运行路径</a>
+        <a href="#main-loop">主循环</a>
+        <a href="#ui">UI 框架</a>
+        <a href="#audio-pins">音频引脚</a>
+        <a href="#audio-output">语音输出 <span class="toc-tag">new</span></a>
+        <a href="#voice">语音识别 <span class="toc-tag">new</span></a>
+        <a href="#partition">固件分区 <span class="toc-tag">new</span></a>
+        <a href="#idf">ESP-IDF 骨架</a>
+        <a href="#tests">验证入口</a>
+        <a href="#limits">限制</a>
+      </nav>
+    </aside>
+
+    <main>
+      <header class="hero" id="top">
+        <span class="eyebrow">Firmware map for firmware/bikemb</span>
+        <h2>BikeMB 当前固件框架说明</h2>
+        <p>这份 HTML 用来快速查代码路径：页面从哪里创建、档位播报怎么触发、语音识别如何进入翻页命令、ESP-SR 模型分区如何烧录。</p>
+        <div class="hero-stats">
+          <div class="stat"><strong>Arduino</strong><span>当前硬件验证主路径</span></div>
+          <div class="stat"><strong>LVGL</strong><span>圆屏 UI 渲染框架</span></div>
+          <div class="stat"><strong>ES8311</strong><span>语音输出 Codec</span></div>
+          <div class="stat"><strong>ES7210</strong><span>麦克风输入 Codec</span></div>
+        </div>
+      </header>
+
+      <section id="runtime">
+        <div class="section-head">
+          <h2>当前运行路径</h2>
+          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。当前 UI、触摸、语音输出、语音识别都在 Arduino 环境验证。</p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>默认路径：Arduino</h3>
+            <p>入口在 <code>main.cpp</code> 的 <code>setup()</code> / <code>loop()</code>。当前上板验证的 dashboard、触摸滑动、档位播报、音频自检、直接语音识别都走这里。</p>
+          </article>
+          <article class="card">
+            <h3>迁移路径：ESP-IDF</h3>
+            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。目前已有 Runtime/Event/Service 骨架，但音频和语音还没有迁移过去。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="module-map">
+        <div class="section-head">
+          <h2>模块地图</h2>
+          <p>看调用方向时，从 <code>main.cpp</code> 往下追；看 UI 时从 <code>DashboardApp</code> 追到 <code>dashboard_pages</code>。</p>
+        </div>
+        <div class="flow">
+          <div class="node"><b>main.cpp</b><span>setup/loop、编译开关、命令路由</span></div>
+          <div class="node"><b>DashboardApp</b><span>UI 对外命令边界：翻页、tick、档位 callback</span></div>
+          <div class="node"><b>View Core</b><span>页面容器、触摸手势、页面显示状态</span></div>
+          <div class="node"><b>Pages</b><span>三个页面的 LVGL object tree 和 label 更新</span></div>
+          <div class="node"><b>LVGL Port</b><span>display flush、touch read、lv_timer_handler</span></div>
+        </div>
+        <div class="grid" style="margin-top:14px">
+          <article class="card">
+            <h3>语音输出</h3>
+            <p><code>audio_prompts</code> 播放档位预录语音；<code>audio_self_test</code> 播放 beep 并验证麦克风 RMS。</p>
+          </article>
+          <article class="card">
+            <h3>语音识别</h3>
+            <p><code>voice_commands</code> 使用 ESP-SR direct command mode，把识别结果转换成 <code>NEXT_PAGE</code> / <code>PREVIOUS_PAGE</code>。</p>
+          </article>
+          <article class="card">
+            <h3>固件分区</h3>
+            <p>默认固件用 framework 默认分区；ESP-SR 测试环境使用 <code>esp_sr_16.csv</code> 并追加烧录 <code>srmodels.bin</code>。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="main-loop">
+        <div class="section-head">
+          <h2>Arduino 主循环</h2>
+          <p><code>main.cpp</code> 是当前功能开关和命令路由的中心。</p>
+        </div>
+        <table>
+          <tr><th>编译开关</th><th>默认值</th><th>打开环境</th><th>用途</th></tr>
+          <tr><td><code>BIKE_MB_RUN_DISPLAY_DIAGNOSTIC</code></td><td><code>0</code></td><td>手动 build flag</td><td>只跑显示诊断。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST</code></td><td><code>0</code></td><td><code>audio-self-test</code></td><td>beep、麦克风 RMS、串口 <code>n/p</code> 模拟翻页。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS</code></td><td><code>0</code></td><td><code>mode-prompts-test</code></td><td>点击档位播放预录语音。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_VOICE_COMMANDS</code></td><td><code>0</code></td><td><code>voice-direct-test</code></td><td>ESP-SR 直接语音命令识别。</td></tr>
+        </table>
+        <div class="grid two" style="margin-top:14px">
+          <article class="card">
+            <h3>setup() 顺序</h3>
+            <p><code>Serial.begin</code> → <code>BoardSupport_Init</code> → <code>BikeMbAudioPrompts_Init</code> → <code>BikeMbAudioSelfTest_Init</code> → <code>BikeMbVoiceCommands_Init</code> → <code>LvglPort_Init</code> → <code>DashboardApp_Init</code> → <code>DashboardApp_SetModeChangedCallback</code></p>
+          </article>
+          <article class="card">
+            <h3>loop() 顺序</h3>
+            <p><code>LvglPort_Tick</code> → <code>DashboardApp_Tick</code> → <code>LvglPort_Run</code> → <code>BikeMbAudioSelfTest_Tick</code> → <code>HandleAudioSelfTestCommand</code> → <code>HandleVoiceCommand</code></p>
+          </article>
+        </div>
+        <table style="margin-top:14px">
+          <tr><th>函数</th><th>来源</th><th>作用</th></tr>
+          <tr><td><code>HandleModeChanged(uint8_t modeIndex)</code></td><td>UI 档位点击 callback</td><td>启用播报时调用 <code>BikeMbAudioPrompts_PlayMode(...)</code>。</td></tr>
+          <tr><td><code>HandleAudioSelfTestCommand()</code></td><td>串口自检命令</td><td>消费 <code>BikeMbAudioSelfTest_ConsumeCommand()</code>，再调用 dashboard 翻页命令。</td></tr>
+          <tr><td><code>HandleVoiceCommand()</code></td><td>ESP-SR 识别结果</td><td>消费 <code>BikeMbVoiceCommands_ConsumeCommand()</code>，再调用 dashboard 翻页命令。</td></tr>
+        </table>
+      </section>
+
+      <section id="ui">
+        <div class="section-head">
+          <h2>UI 框架</h2>
+          <p>原则：触摸、音频、语音、串口测试都通过 <code>DashboardApp_*</code> 命令入口，不直接操作 LVGL 页面。</p>
+        </div>
+        <table>
+          <tr><th>层级</th><th>文件</th><th>关键函数</th><th>说明</th></tr>
+          <tr><td>App</td><td><code>dashboard_app.h/cpp</code></td><td><code>DashboardApp_Init</code><br><code>DashboardApp_Tick</code><br><code>DashboardApp_NextPage</code><br><code>DashboardApp_PreviousPage</code><br><code>DashboardApp_SetModeChangedCallback</code></td><td>UI 对外边界。</td></tr>
+          <tr><td>View Adapter</td><td><code>dashboard_view.h/cpp</code></td><td><code>DashboardView_Create</code><br><code>DashboardView_Update</code></td><td>C++ 和 C UI core 的适配层。</td></tr>
+          <tr><td>View Core</td><td><code>dashboard_view_core.h/c</code></td><td><code>BikeMbDashboardView_Create</code><br><code>BikeMbDashboardView_Update</code><br><code>BikeMbDashboardView_NextPage</code><br><code>BikeMbDashboardView_PreviousPage</code></td><td>页面容器、当前页状态、触摸手势路由。</td></tr>
+          <tr><td>Pages</td><td><code>dashboard_pages.h/c</code></td><td><code>BikeMbDashboardPages_Create</code><br><code>BikeMbDashboardPages_Update</code><br><code>mode_click_event_cb</code></td><td>三个页面的 LVGL object tree 和档位点击。</td></tr>
+          <tr><td>Style</td><td><code>dashboard_ui_style.h/c</code></td><td><code>BikeMbUi_MakeFixedLabel</code><br><code>BikeMbUi_SetLabelTextIfChanged</code></td><td>固定宽度 label、颜色、panel 样式。</td></tr>
+        </table>
+        <div class="callout good">页面不会按时间自动跳转。旧的 <code>activePage = (now / 5000) % 3</code> 已删除。页面只会因触摸、串口自检命令或语音命令而变化。</div>
+      </section>
+
+      <section id="audio-pins">
+        <div class="section-head">
+          <h2>音频硬件引脚</h2>
+          <p>这些引脚已经用于音频输出、麦克风输入和 ESP-SR 测试。</p>
+        </div>
+        <table>
+          <tr><th>信号</th><th>GPIO</th><th>用途</th></tr>
+          <tr><td>I2S MCLK</td><td><code>GPIO2</code></td><td>ES8311 / ES7210 主时钟。</td></tr>
+          <tr><td>I2S BCLK</td><td><code>GPIO48</code></td><td>I2S bit clock。</td></tr>
+          <tr><td>I2S LRCK</td><td><code>GPIO38</code></td><td>I2S word select。</td></tr>
+          <tr><td>I2S DOUT</td><td><code>GPIO47</code></td><td>输出到 ES8311 喇叭链路。</td></tr>
+          <tr><td>I2S DIN</td><td><code>GPIO39</code></td><td>ES7210 麦克风输入。</td></tr>
+          <tr><td>I2C SDA/SCL</td><td><code>GPIO10 / GPIO11</code></td><td>Codec 寄存器配置。</td></tr>
+          <tr><td>PA enable</td><td><code>GPIO15</code></td><td>功放使能。</td></tr>
+        </table>
+      </section>
+
+      <section id="audio-output">
+        <div class="section-head">
+          <h2>语音输出框架</h2>
+          <p>当前输出路径有两条：音频自检 beep 和档位预录语音播报。</p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>audio_self_test</h3>
+            <p>文件：<code>audio_self_test.h/cpp</code></p>
+            <p>入口：<code>BikeMbAudioSelfTest_Init</code>、<code>BikeMbAudioSelfTest_Tick</code>、<code>BikeMbAudioSelfTest_PlayPageTone</code>、<code>BikeMbAudioSelfTest_ConsumeCommand</code></p>
+          </article>
+          <article class="card">
+            <h3>audio_prompts</h3>
+            <p>文件：<code>audio_prompts.h/cpp</code>、<code>audio_prompt_assets.h/cpp</code></p>
+            <p>入口：<code>BikeMbAudioPrompts_Init</code>、<code>BikeMbAudioPrompts_PlayMode</code></p>
+          </article>
+        </div>
+        <table style="margin-top:14px">
+          <tr><th>函数/数据</th><th>作用</th></tr>
+          <tr><td><code>initSpeakerCodec()</code></td><td>配置 ES8311，I2C 地址 <code>0x18</code>。</td></tr>
+          <tr><td><code>writePrompt(...)</code></td><td>把 16 kHz mono PCM 复制成 stereo I2S frame 输出。</td></tr>
+          <tr><td><code>kBikeMbPromptEcoPcm</code></td><td>“经济模式”的 PCM 数据。</td></tr>
+          <tr><td><code>kBikeMbPromptTrailPcm</code></td><td>“越野模式”的 PCM 数据。</td></tr>
+          <tr><td><code>kBikeMbPromptBoostPcm</code></td><td>“增强模式”的 PCM 数据。</td></tr>
+        </table>
+        <div class="callout good">语音资产生成：运行 <code>tools/generate-mode-prompts.ps1</code>，使用本地男声 <code>Microsoft Kangkang</code> 生成 WAV，再转换成 <code>audio_prompt_assets.cpp</code>。默认固件不会带入大语音数组。</div>
+      </section>
+
+      <section id="voice">
+        <div class="section-head">
+          <h2>语音识别框架</h2>
+          <p>当前语音识别是 ESP-SR direct command mode，用来验证“下一页/上一页”能力。</p>
+        </div>
+        <div class="flow">
+          <div class="node"><b>ES7210 Mic</b><span>16 kHz stereo I2S samples</span></div>
+          <div class="node"><b>ESP_SR</b><span>SR_MODE_COMMAND</span></div>
+          <div class="node"><b>handleSrEvent</b><span>识别成功后设置 g_pendingCommand</span></div>
+          <div class="node"><b>main.cpp</b><span>BikeMbVoiceCommands_ConsumeCommand</span></div>
+          <div class="node"><b>DashboardApp</b><span>NextPage / PreviousPage</span></div>
+        </div>
+        <table style="margin-top:14px">
+          <tr><th>函数/数据</th><th>作用</th></tr>
+          <tr><td><code>BikeMbVoiceCommands_Init()</code></td><td>初始化 ES7210、I2S 输入、ESP-SR callback，并进入 direct command mode。</td></tr>
+          <tr><td><code>BikeMbVoiceCommands_ConsumeCommand()</code></td><td>取出待处理语音命令并清空队列。</td></tr>
+          <tr><td><code>kSrCommands[]</code></td><td>当前命令表：<code>Next page</code>、<code>Next screen</code>、<code>Next song</code>、<code>Previous page</code>、<code>Previous screen</code>、<code>Go back</code>。</td></tr>
+          <tr><td><code>handleSrEvent(...)</code></td><td>ESP-SR callback，把 command id 映射成 <code>NEXT_PAGE</code> / <code>PREVIOUS_PAGE</code>。</td></tr>
+        </table>
+        <div class="callout">当前 Arduino ESP-SR wrapper 在本工程里走英文命令；中文“下一页/上一页”尚未启用。这个测试环境也没有唤醒词，环境噪声可能误触发。</div>
+      </section>
+
+      <section id="partition">
+        <div class="section-head">
+          <h2>固件分区和构建环境</h2>
+          <p>默认固件和 ESP-SR 测试固件的分区策略不同。ESP-SR 需要模型分区和额外模型镜像。</p>
+        </div>
+        <table>
+          <tr><th>Environment</th><th>Framework</th><th>用途</th><th>关键配置</th></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c</code></td><td>Arduino</td><td>默认 LVGL dashboard 固件。</td><td>不打开音频/语音开关。</td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-audio-self-test</code></td><td>Arduino</td><td>音频输入/输出硬件验证。</td><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST=1</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-mode-prompts-test</code></td><td>Arduino</td><td>点击档位后播放预录语音。</td><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS=1</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-voice-direct-test</code></td><td>Arduino</td><td>ESP-SR 直接识别翻页。</td><td><code>board_build.partitions = esp_sr_16.csv</code><br><code>BIKE_MB_ENABLE_VOICE_COMMANDS=1</code><br><code>extra_scripts = pre:../../tools/pio_upload_srmodels.py</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF</td><td>Runtime/Event/Service 迁移构建。</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME=1</code></td></tr>
+        </table>
+        <div class="grid two" style="margin-top:14px">
+          <article class="card">
+            <h3>默认分区</h3>
+            <p>默认 Arduino 环境没有在仓库里指定自定义分区 CSV，使用 board/framework 默认分区布局。</p>
+          </article>
+          <article class="card">
+            <h3>ESP-SR 分区</h3>
+            <p><code>voice-direct-test</code> 使用 framework 提供的 <code>esp_sr_16.csv</code>。模型文件 <code>srmodels.bin</code> 通过脚本追加烧录到 <code>0xC10000</code>。</p>
+          </article>
+        </div>
+        <pre><code>srmodels = framework_libs / "esp32s3" / "esp_sr" / "srmodels.bin"
+env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
+      </section>
+
+      <section id="idf">
+        <div class="section-head">
+          <h2>ESP-IDF Runtime 骨架</h2>
+          <p>这条路径用于后续迁移，不是当前音频/语音验证主路径。</p>
+        </div>
+        <table>
+          <tr><th>函数</th><th>作用</th></tr>
+          <tr><td><code>BikeRuntime_Init()</code></td><td>创建 event queue，并调用 <code>BoardSupport_Init()</code>。</td></tr>
+          <tr><td><code>BikeRuntime_Start()</code></td><td>启动 <code>UiService</code> 和 <code>RuntimeTickTask</code>。</td></tr>
+          <tr><td><code>BikeRuntime_PostEvent(...)</code></td><td>向固定 FreeRTOS queue 投递事件；队列满时丢弃低优先级 tick。</td></tr>
+          <tr><td><code>UiService_Start(...)</code></td><td>启动拥有 LVGL 的 UI task。</td></tr>
+          <tr><td><code>UiTask(...)</code></td><td>初始化 LVGL/dashboard，消费事件，并调用 <code>LvglPort_Run()</code>。</td></tr>
+        </table>
+      </section>
+
+      <section id="tests">
+        <div class="section-head">
+          <h2>验证入口</h2>
+          <p>轻量合同测试保护关键边界，避免后续改动破坏已验证路径。</p>
+        </div>
+        <table>
+          <tr><th>测试文件</th><th>保护内容</th></tr>
+          <tr><td><code>test_audio_self_test_contract.py</code></td><td>音频自检开关、引脚、API、dashboard 命令边界。</td></tr>
+          <tr><td><code>test_audio_prompts_contract.py</code></td><td>档位播报 API、生成资产、默认关闭、mode callback。</td></tr>
+          <tr><td><code>test_voice_commands_contract.py</code></td><td>ESP-SR API、命令词、模型烧录脚本、语音环境分区配置。</td></tr>
+          <tr><td><code>test_dashboard_no_auto_page_contract.py</code></td><td>防止 demo metrics 再引入自动翻页。</td></tr>
+          <tr><td><code>test_runtime_contract.py</code></td><td>ESP-IDF runtime/event/service 骨架。</td></tr>
+        </table>
+        <pre><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1</code></pre>
+      </section>
+
+      <section id="limits">
+        <div class="section-head">
+          <h2>当前限制</h2>
+          <p>这些是后续继续开发前需要明确的边界。</p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>音频链路所有权</h3>
+            <p>语音输出和语音识别目前是两个测试环境，不建议同时打开。后续要“边听边播”，需要共享音频管理或暂停/恢复识别策略。</p>
+          </article>
+          <article class="card">
+            <h3>语音命令能力</h3>
+            <p><code>voice-direct-test</code> 没有唤醒词，可能误识别；当前 Arduino ESP-SR 路径也还没有启用中文命令识别。</p>
+          </article>
+        </div>
+      </section>
+
+      <div class="footer">
+        BikeMB architecture HTML. Source summary mirrors <code>docs/software-architecture.md</code>.
+      </div>
+    </main>
+  </div>
+</body>
+</html>
