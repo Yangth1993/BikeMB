@@ -44,8 +44,8 @@ def test_cpu_metric_uses_render_work_not_frame_interval() -> None:
         "Dashboard app should accept the latest measured LVGL render work from the main loop.",
     )
     check(
-        "micros()" in port_source,
-        "LVGL port should measure lv_timer_handler() work duration for the dashboard metric.",
+        "BikePlatform_Micros()" in port_source,
+        "LVGL port should measure lv_timer_handler() work duration through the platform timing wrapper.",
     )
 
 

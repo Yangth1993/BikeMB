@@ -1,0 +1,29 @@
+set(BIKEMB_SRCS
+    app/dashboard_app.cpp
+    app/dashboard_view.cpp
+    app/dashboard_view_core.c
+    app/demo_metrics.cpp
+    app/display_diagnostics.cpp
+    drivers/Display_ST77916.cpp
+    drivers/I2C_Driver.cpp
+    drivers/TCA9554PWR.cpp
+    drivers/Touch_CST816.cpp
+    drivers/esp_lcd_st77916.c
+    main.cpp
+    platform/board_support.cpp
+    platform/lvgl_port.cpp
+    runtime/bike_runtime.cpp
+    services/metrics_service.cpp
+    services/ui_service.cpp
+)
+
+idf_component_register(
+    SRCS ${BIKEMB_SRCS}
+    INCLUDE_DIRS "." "../include"
+    REQUIRES driver esp_timer esp_lcd esp_hw_support lvgl
+)
+
+target_compile_definitions(${COMPONENT_LIB} PRIVATE
+    LV_CONF_INCLUDE_SIMPLE
+    BIKE_MB_USE_ESPIDF_RUNTIME=1
+)

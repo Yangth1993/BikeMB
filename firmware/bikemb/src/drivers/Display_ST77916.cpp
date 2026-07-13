@@ -10,12 +10,32 @@
 
 #include "esp_lcd_panel_io_interface.h"
 #include "esp_lcd_panel_ops.h"
+#include "platform/bike_platform.h"
 
 #define LCD_OPCODE_WRITE_CMD        (0x02ULL)
 #define LCD_OPCODE_READ_CMD         (0x0BULL)
 #define LCD_OPCODE_WRITE_COLOR      (0x32ULL)
 
 static lcd_flush_done_callback_t g_flushDoneCallback = NULL;
+static LCD_PerfStats g_lcdPerfStats = {};
+
+static inline uint16_t SwapRgb565Pixel(uint16_t color) {
+  return (uint16_t)(((color >> 8) & 0xFF) | ((color << 8) & 0xFF00));
+}
+
+static void SwapRgb565Buffer(uint16_t *color, uint32_t size) {
+  size_t i = 0;
+  for (; i + 3 < size; i += 4) {
+    color[i] = SwapRgb565Pixel(color[i]);
+    color[i + 1] = SwapRgb565Pixel(color[i + 1]);
+    color[i + 2] = SwapRgb565Pixel(color[i + 2]);
+    color[i + 3] = SwapRgb565Pixel(color[i + 3]);
+  }
+
+  for (; i < size; ++i) {
+    color[i] = SwapRgb565Pixel(color[i]);
+  }
+}
 
 static bool PanelIoColorTransDone(esp_lcd_panel_io_handle_t panel_io,
                                   esp_lcd_panel_io_event_data_t *edata,
@@ -230,6 +250,14 @@ void LCD_SetFlushDoneCallback(lcd_flush_done_callback_t callback) {
   g_flushDoneCallback = callback;
 }
 
+LCD_PerfStats LCD_GetPerfStats() {
+  return g_lcdPerfStats;
+}
+
+void LCD_ResetPerfStats() {
+  g_lcdPerfStats = {};
+}
+
 int QSPI_Init(void){
   static const spi_bus_config_t host_config = {            
     .data0_io_num = ESP_PANEL_LCD_SPI_IO_DATA0,                    
@@ -341,7 +369,7 @@ int QSPI_Init(void){
 
 void ST77916_Init() {
   ST7701_Reset();
-  pinMode(ESP_PANEL_LCD_SPI_IO_TE, OUTPUT);
+  BikePlatform_SetOutputPin(ESP_PANEL_LCD_SPI_IO_TE);
   if(!QSPI_Init()){
     printf("ST77916 Failed to be initialized\r\n");
   }
@@ -350,9 +378,9 @@ void ST77916_Init() {
 void LCD_addWindow(uint16_t Xstart, uint16_t Ystart, uint16_t Xend, uint16_t Yend,uint16_t* color)
 { 
   uint32_t size = (Xend - Xstart +1 ) * (Yend - Ystart + 1);
-  for (size_t i = 0; i < size; i++) {
-    color[i] = (((color[i] >> 8) & 0xFF) | ((color[i] << 8) & 0xFF00));
-  }
+  const uint32_t startUs = BikePlatform_Micros();
+
+  SwapRgb565Buffer(color, size);
   Xend = Xend + 1;      // esp_lcd_panel_draw_bitmap: x_end End index on x-axis (x_end not included)
   Yend = Yend + 1;      // esp_lcd_panel_draw_bitmap: y_end End index on y-axis (y_end not included)
   if (Xend > EXAMPLE_LCD_WIDTH)
@@ -362,6 +390,14 @@ void LCD_addWindow(uint16_t Xstart, uint16_t Ystart, uint16_t Xend, uint16_t Yen
     
   // printf("Xstart = %d    Ystart = %d    Xend = %d    Yend = %d \r\n",Xstart, Ystart, Xend, Yend);
   esp_lcd_panel_draw_bitmap(panel_handle, Xstart, Ystart, Xend, Yend, color);                     // x_end End index on x-axis (x_end not included)
+
+  const uint32_t elapsedUs = BikePlatform_Micros() - startUs;
+  ++g_lcdPerfStats.flushCount;
+  g_lcdPerfStats.pixelCount += size;
+  g_lcdPerfStats.totalWriteUs += elapsedUs;
+  if (elapsedUs > g_lcdPerfStats.maxWriteUs) {
+    g_lcdPerfStats.maxWriteUs = elapsedUs;
+  }
 }
 
 
@@ -369,8 +405,8 @@ uint8_t LCD_Backlight = 50;
 // backlight
 void Backlight_Init()
 {
-  ledcAttach(LCD_Backlight_PIN, Frequency, Resolution);   
-  ledcWrite(LCD_Backlight_PIN, Dutyfactor);  
+  BikePlatform_LedcAttach(LCD_Backlight_PIN, Frequency, Resolution, PWM_Channel);   
+  BikePlatform_LedcWrite(LCD_Backlight_PIN, PWM_Channel, Dutyfactor);  
   Set_Backlight(LCD_Backlight);      //0~100                 
 }
 
@@ -382,6 +418,6 @@ void Set_Backlight(uint8_t Light)
     uint32_t Backlight = Light*10;
     if(Backlight == 1000)
       Backlight = 1024;
-    ledcWrite(LCD_Backlight_PIN, Backlight);
+    BikePlatform_LedcWrite(LCD_Backlight_PIN, PWM_Channel, Backlight);
   }
 }

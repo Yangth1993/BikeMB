@@ -2,89 +2,161 @@
 
 This document captures the current BikeMB firmware architecture for quick agent and developer reference.
 
-## Layer Diagram
+## Layered Firmware Architecture
 
 ```mermaid
-flowchart TD
-  HW["Hardware<br/>ESP32-S3<br/>ST77916 round LCD<br/>Backlight / GPIO / QSPI-SPI LCD"]
+flowchart BT
+  subgraph L0["L0 Hardware"]
+    HW_MCU["ESP32-S3R8<br/>dual core MCU<br/>16MB flash / 8MB PSRAM board profile"]
+    HW_LCD["ST77916 round LCD<br/>360 x 360<br/>SPI/QSPI panel path"]
+    HW_IO["GPIO / backlight / reset / power / I2C expander"]
+  end
 
-  BSP["Board Support<br/>BoardSupport_Init()<br/>ST77916_Init()<br/>Backlight_Init()"]
+  subgraph L1["L1 ESP-IDF HAL + FreeRTOS"]
+    IDF["ESP-IDF framework<br/>app_main()<br/>ESP_LOGx"]
+    RTOS["FreeRTOS primitives<br/>task / queue / tick delay"]
+    IDF_LCD["esp_lcd<br/>panel IO + draw bitmap"]
+    IDF_TIME["esp_timer_get_time()<br/>heap_caps APIs"]
+  end
 
-  LCD["LCD Driver<br/>Display_ST77916.cpp<br/>LCD_addWindow()<br/>RGB565 byte-swap<br/>esp_lcd_panel_draw_bitmap()"]
+  subgraph L1B["Fallback Runtime"]
+    ARDUINO["Arduino env retained<br/>setup() / loop()<br/>known stable fallback"]
+  end
 
-  LVGLPORT["LVGL Port<br/>lvgl_port.cpp<br/>lv_init()<br/>static lv_disp_drv_t<br/>internal RAM double buffers<br/>FlushCallback()<br/>LvglPort_Tick()<br/>LvglPort_Run()"]
+  subgraph L2["L2 BSP"]
+    BSP["BoardSupport_Init()<br/>board bring-up boundary"]
+    BSP_LCD["ST77916_Init()<br/>Backlight_Init()"]
+    BSP_DIAG["DisplayDiagnostics_Run()<br/>BIKE_MB_RUN_DISPLAY_DIAGNOSTIC"]
+  end
 
-  LVGL["LVGL Core<br/>lv_timer_handler()<br/>draw buffer<br/>invalid areas<br/>widget rendering"]
+  subgraph L3["L3 Drivers"]
+    LCDDRV["Display_ST77916<br/>LCD_addWindow()<br/>RGB565 byte-swap<br/>sync flush contract"]
+    PANEL["esp_lcd_st77916<br/>panel command sequence"]
+    I2C["I2C_Driver + TCA9554PWR<br/>Arduino and ESP-IDF paths"]
+  end
 
-  APP["Application Scheduler<br/>main.cpp<br/>Arduino setup()/loop()<br/>DashboardApp_Tick()<br/>stable 33ms dashboard cadence"]
+  subgraph L4["L4 Platform + LVGL Port"]
+    PLATFORM["bike_platform.h<br/>millis/micros/delay/log/heap/GPIO wrappers"]
+    LVGLPORT["lvgl_port<br/>lv_init()<br/>static lv_disp_drv_t<br/>draw buffers"]
+    FLUSH["FlushCallback()<br/>LCD_addWindow()<br/>lv_disp_flush_ready()"]
+    LVGL["LVGL 8.4<br/>widgets / styles / fonts<br/>single UI owner rule"]
+  end
 
-  METRICS["Demo Metrics<br/>demo_metrics.cpp<br/>FPS counter<br/>GUI render-budget load<br/>heap / psram<br/>orb position"]
+  subgraph L5["L5 BikeMB Runtime"]
+    RUNTIME["BikeRuntime_Init()<br/>BikeRuntime_Start()"]
+    QUEUE["Bike Event Queue<br/>fixed FreeRTOS queue<br/>drop low-priority ticks when full"]
+    EVENTS["BikeEvent<br/>SystemTick / DashboardTick<br/>RenderStatsUpdate / DiagnosticRequest"]
+    TICKTASK["RuntimeTickTask<br/>posts periodic events"]
+  end
 
-  LOGGING["Serial / Diagnostics<br/>startup logs only in normal dashboard<br/>no periodic Serial.printf in hot path<br/>display diagnostic guarded by BIKE_MB_RUN_DISPLAY_DIAGNOSTIC"]
+  subgraph L6["L6 Services"]
+    UISVC["UiService<br/>only task allowed to call LVGL<br/>owns LvglPort + DashboardApp"]
+    METRICSVC["MetricsService<br/>demo metrics + render stats aggregation"]
+  end
 
-  VIEWWRAP["Firmware UI Adapter<br/>dashboard_view.cpp<br/>DemoMetrics to BikeMbDashboardMetrics"]
+  subgraph L7["L7 App / UI"]
+    APP["DashboardApp<br/>event/model update boundary"]
+    VIEW["dashboard_view.cpp<br/>firmware adapter"]
+    UICORE["dashboard_view_core.c/h<br/>shared dashboard UI core"]
+  end
 
-  UICORE["Shared UI Core<br/>dashboard_view_core.c/h<br/>dashboard widgets<br/>change-guarded labels/bars<br/>round background + non-clipping content layer"]
+  subgraph DEV["Development + Verification"]
+    SIM["Official LVGL PC simulator<br/>ui/ mechanism"]
+    TESTS["tools/tests<br/>contract tests for driver, LVGL, runtime, config"]
+    PIO["PlatformIO<br/>Arduino fallback env<br/>ESP-IDF migration env"]
+    BUILDS["repo-local cache/build<br/>.pio-home<br/>build/pio-bikemb<br/>build/pio-libdeps"]
+  end
 
-  SIMTOOLS["PC Simulator Tools<br/>setup-lvgl-simulator.ps1<br/>open-lvgl-simulator.ps1<br/>sync-bikemb-simulator-ui.ps1"]
+  HW_MCU --> IDF
+  HW_MCU --> ARDUINO
+  HW_LCD --> IDF_LCD
+  HW_IO --> BSP
 
-  SIM["Official LVGL Simulator<br/>tools/lv_port_pc_vscode/ ignored<br/>ui/bikemb_dashboard.c<br/>ui/dashboard_view_core.c"]
+  IDF --> RTOS
+  IDF --> IDF_TIME
+  RTOS --> RUNTIME
+  IDF_LCD --> LCDDRV
+  IDF_TIME --> PLATFORM
+  ARDUINO --> PLATFORM
 
-  TESTS["Lightweight Contract Tests<br/>tools/tests/<br/>driver / LVGL port / simulator / performance contracts"]
+  PLATFORM --> BSP
+  BSP --> BSP_LCD
+  BSP --> BSP_DIAG
+  BSP_LCD --> LCDDRV
+  I2C --> BSP
+  LCDDRV --> PANEL
 
-  HW --> BSP --> LCD --> LVGLPORT --> LVGL
-  APP --> LVGLPORT
-  APP --> METRICS --> VIEWWRAP --> UICORE --> LVGL
-  APP --> LOGGING
-  LVGLPORT --> LCD
-  SIMTOOLS --> SIM --> UICORE
-  TESTS -. validates .-> LCD
+  PANEL --> FLUSH
+  LCDDRV --> FLUSH
+  FLUSH --> LVGLPORT
+  LVGLPORT --> LVGL
+  PLATFORM --> LVGLPORT
+
+  RUNTIME --> QUEUE
+  TICKTASK --> QUEUE
+  EVENTS --> QUEUE
+  QUEUE --> UISVC
+  QUEUE --> METRICSVC
+
+  UISVC --> LVGLPORT
+  UISVC --> APP
+  METRICSVC --> APP
+  APP --> VIEW
+  VIEW --> UICORE
+  LVGL --> UICORE
+
+  SIM --> UICORE
+  TESTS -. validates .-> LCDDRV
   TESTS -. validates .-> LVGLPORT
-  TESTS -. validates .-> UICORE
-  TESTS -. validates .-> SIMTOOLS
+  TESTS -. validates .-> RUNTIME
+  TESTS -. validates .-> PIO
+  PIO --> BUILDS
 ```
 
 ## Runtime Flow
 
 ```mermaid
 sequenceDiagram
-  participant Loop as Arduino loop()
+  participant Main as app_main()
+  participant Runtime as BikeRuntime
+  participant Queue as Bike Event Queue
+  participant UI as UiService task
+  participant Metrics as MetricsService
   participant App as DashboardApp
-  participant Metrics as DemoMetrics
-  participant View as DashboardView/Core
   participant LVGL as LVGL
   participant LCD as LCD_addWindow/ST77916
 
-  Loop->>LVGL: LvglPort_Tick(deltaMs)
-  Loop->>App: DashboardApp_Tick(now)
-  App->>Metrics: DemoMetrics_Update(renderWorkMs)
-  Metrics-->>App: fps/cpu/heap/orb
-  App->>View: DashboardView_Update(metrics)
-  View->>LVGL: update changed labels/bars + orb position
-  Loop->>LVGL: LvglPort_Run()
+  Main->>Runtime: BikeRuntime_Init()
+  Runtime->>Runtime: BoardSupport_Init()
+  Main->>Runtime: BikeRuntime_Start()
+  Runtime->>UI: xTaskCreatePinnedToCore()
+  Runtime->>Runtime: start RuntimeTickTask
+  Runtime->>Queue: post DashboardTick / SystemTick
+  UI->>Queue: consume UI events
+  UI->>App: DashboardApp_Tick(timestampMs)
+  App->>Metrics: MetricsService_UpdateDashboard(renderWorkMs)
+  Metrics-->>App: fps/cpu/heap/orb model
+  App->>LVGL: update shared dashboard view
+  UI->>LVGL: LvglPort_Tick(deltaMs)
+  UI->>LVGL: LvglPort_Run()
   LVGL->>LCD: FlushCallback(area, color)
   LCD-->>LVGL: lv_disp_flush_ready()
-  LVGL-->>Loop: renderWorkMs
-  Loop->>App: DashboardApp_SetRenderWorkMs(renderWorkMs)
+  UI->>App: DashboardApp_SetRenderWorkMs(renderWorkMs)
 ```
 
-## Notes
+## Current Migration State
 
-- The LCD driver currently uses a synchronous flush contract. Do not push refresh cadence aggressively until the LCD transfer path is measured or made asynchronous.
-- The dashboard CPU number is a GUI render-budget estimate, not a FreeRTOS system-wide CPU utilization metric.
-- The dashboard hot path must not emit periodic serial logs. USB serial backpressure can stall the main loop and make FPS collapse after the first logging interval.
-- The proven board cadence is currently the stable 33ms dashboard update interval. 16ms/60Hz needs async flush or measured LCD transfer evidence first.
-- `dashboard_view_core.c/h` is shared by firmware and the official PC LVGL simulator.
-- `tools/lv_port_pc_vscode/` is an ignored official checkout and should not be committed.
+- The Arduino PlatformIO env remains the default and the stable hardware fallback.
+- The ESP-IDF PlatformIO env builds and provides the new `app_main()` Runtime/Event Bus/Service skeleton.
+- LVGL remains single-owner: only `UiService` should call LVGL APIs in the ESP-IDF runtime.
+- The LCD path still uses the stable synchronous flush contract: `FlushCallback()` -> `LCD_addWindow()` -> `lv_disp_flush_ready()`.
+- The PC simulator continues to share `dashboard_view_core.c/h` through the official LVGL simulator `ui/` mechanism.
+- Before flashing the ESP-IDF env, finish the IDF board sdkconfig pass for flash size, PSRAM, CPU frequency, and LVGL examples/demos pruning.
 
 ## How To View
 
 This file is Markdown with Mermaid diagrams.
 
-Recommended viewers:
-
 - VS Code or Cursor: open this file, then use Markdown Preview.
 - GitHub: Mermaid diagrams render automatically when the file is pushed.
-- Typora or Obsidian: both can render Markdown; enable Mermaid support if it is disabled.
-
-If a viewer shows the Mermaid code block as plain text, install or enable Mermaid preview support for that editor.
+- Typora or Obsidian: enable Mermaid support if it is disabled.

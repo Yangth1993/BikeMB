@@ -1,5 +1,9 @@
 #pragma once
-#include <Wire.h> 
+#include <stdint.h>
+
+#if defined(ARDUINO) && !defined(BIKE_MB_USE_ESPIDF_RUNTIME)
+#include <Wire.h>
+#endif
 
 #define I2C_SCL_PIN       10
 #define I2C_SDA_PIN       11

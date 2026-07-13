@@ -1,6 +1,8 @@
 #include "demo_metrics.h"
 
-#include <Arduino.h>
+#include <algorithm>
+
+#include "platform/bike_platform.h"
 
 namespace {
 
@@ -37,7 +39,7 @@ void UpdateOrb() {
 }  // namespace
 
 void DemoMetrics_Init() {
-  g_lastFpsAt = millis();
+  g_lastFpsAt = BikePlatform_Millis();
 }
 
 DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs, uint32_t renderWorkMs) {
@@ -46,24 +48,37 @@ DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs, uint3
   ++g_frameCount;
   UpdateOrb();
 
-  const uint32_t now = millis();
+  const uint32_t now = BikePlatform_Millis();
   if (now - g_lastFpsAt >= 1000) {
     g_fps = g_frameCount * 1000.0f / (now - g_lastFpsAt);
     g_frameCount = 0;
     g_lastFpsAt = now;
   }
 
-  const float frameLoad = min(100.0f, renderWorkMs * 100.0f / max<uint32_t>(1, targetFrameMs));
+  const float frameLoad =
+      std::min(100.0f, renderWorkMs * 100.0f / static_cast<float>(std::max<uint32_t>(1, targetFrameMs)));
   g_cpuLoad = 0.85f * g_cpuLoad + 0.15f * frameLoad;
 
   DemoMetrics metrics{};
   metrics.fps = g_fps;
   metrics.cpuLoad = g_cpuLoad;
-  metrics.heapFree = ESP.getFreeHeap();
-  metrics.heapTotal = ESP.getHeapSize();
-  metrics.psramFree = ESP.getFreePsram();
-  metrics.psramTotal = ESP.getPsramSize();
+  metrics.heapFree = BikePlatform_GetHeapFree();
+  metrics.heapTotal = BikePlatform_GetHeapTotal();
+  metrics.psramFree = BikePlatform_GetPsramFree();
+  metrics.psramTotal = BikePlatform_GetPsramTotal();
   metrics.orbX = g_orbX;
   metrics.orbY = g_orbY;
+  metrics.uptimeMs = now;
+  metrics.rideSeconds = now / 1000;
+  metrics.speedKmh = 24.6f + ((now / 120) % 9) * 0.1f;
+  metrics.tripKm = 12.4f + (now / 60000) * 0.1f;
+  metrics.totalKm = 1247.0f + metrics.tripKm;
+  metrics.averageSpeedKmh = 23.7f;
+  metrics.assistPowerW = 180.0f + ((now / 180) % 40);
+  metrics.temperatureC = 18.0f;
+  metrics.gradePercent = 4.0f;
+  metrics.batteryPercent = 78;
+  metrics.activePage = (now / 5000) % 3;
+  metrics.wavePhase = (now / 180) % 24;
   return metrics;
 }

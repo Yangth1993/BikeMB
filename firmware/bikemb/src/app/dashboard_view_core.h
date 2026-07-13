@@ -15,6 +15,18 @@ typedef struct BikeMbDashboardMetrics {
   uint32_t psramTotal;
   int16_t orbX;
   int16_t orbY;
+  uint32_t uptimeMs;
+  uint32_t rideSeconds;
+  float speedKmh;
+  float tripKm;
+  float totalKm;
+  float averageSpeedKmh;
+  float assistPowerW;
+  float temperatureC;
+  float gradePercent;
+  uint8_t batteryPercent;
+  uint8_t activePage;
+  uint8_t wavePhase;
 } BikeMbDashboardMetrics;
 
 void BikeMbDashboardView_Create(void);

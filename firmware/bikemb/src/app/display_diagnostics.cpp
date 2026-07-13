@@ -1,9 +1,9 @@
 #include "display_diagnostics.h"
 
-#include <Arduino.h>
 #include "esp_heap_caps.h"
 
 #include "../drivers/Display_ST77916.h"
+#include "platform/bike_platform.h"
 
 namespace {
 
@@ -35,30 +35,30 @@ void FillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t rgb565) {
     LCD_addWindow(x, row, x + w - 1, row + chunkHeight - 1, g_buffer);
     row += chunkHeight;
     remaining -= chunkHeight;
-    delay(10);
+    BikePlatform_DelayMs(10);
   }
 }
 
 }  // namespace
 
 void DisplayDiagnostics_Run() {
-  Serial.println("[BikeMB] display diagnostic start");
+  BikePlatform_LogInfo("BikeMB.DisplayDiagnostic", "display diagnostic start");
 
   g_buffer = static_cast<uint16_t *>(
       heap_caps_malloc(kBufferPixels * sizeof(uint16_t), MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   if (g_buffer == nullptr) {
-    Serial.println("[BikeMB] display diagnostic buffer allocation failed");
+    BikePlatform_LogInfo("BikeMB.DisplayDiagnostic", "display diagnostic buffer allocation failed");
     return;
   }
 
   FillRect(0, 0, kWidth, kHeight, 0x0000);
-  delay(300);
+  BikePlatform_DelayMs(300);
 
   FillRect(0, 0, 180, 180, 0xF800);
   FillRect(180, 0, 180, 180, 0x07E0);
   FillRect(0, 180, 180, 180, 0x001F);
   FillRect(180, 180, 180, 180, 0xFFFF);
-  delay(800);
+  BikePlatform_DelayMs(800);
 
   const uint16_t colors[] = {
       0xF800, 0xFFE0, 0x07E0, 0x07FF, 0x001F, 0xF81F,
@@ -69,5 +69,5 @@ void DisplayDiagnostics_Run() {
     FillRect(0, static_cast<uint16_t>(i * bandHeight), kWidth, bandHeight, colors[i]);
   }
 
-  Serial.println("[BikeMB] display diagnostic ready");
+  BikePlatform_LogInfo("BikeMB.DisplayDiagnostic", "display diagnostic ready");
 }

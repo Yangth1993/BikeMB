@@ -16,6 +16,18 @@ void DashboardView_Update(const DemoMetrics &metrics) {
   viewMetrics.psramTotal = metrics.psramTotal;
   viewMetrics.orbX = metrics.orbX;
   viewMetrics.orbY = metrics.orbY;
+  viewMetrics.uptimeMs = metrics.uptimeMs;
+  viewMetrics.rideSeconds = metrics.rideSeconds;
+  viewMetrics.speedKmh = metrics.speedKmh;
+  viewMetrics.tripKm = metrics.tripKm;
+  viewMetrics.totalKm = metrics.totalKm;
+  viewMetrics.averageSpeedKmh = metrics.averageSpeedKmh;
+  viewMetrics.assistPowerW = metrics.assistPowerW;
+  viewMetrics.temperatureC = metrics.temperatureC;
+  viewMetrics.gradePercent = metrics.gradePercent;
+  viewMetrics.batteryPercent = metrics.batteryPercent;
+  viewMetrics.activePage = metrics.activePage;
+  viewMetrics.wavePhase = metrics.wavePhase;
 
   BikeMbDashboardView_Update(&viewMetrics);
 }

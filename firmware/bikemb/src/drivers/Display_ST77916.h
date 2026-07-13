@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 #include "TCA9554PWR.h"
 
 #define LCD_Backlight_PIN   5
@@ -38,10 +39,19 @@ extern uint8_t LCD_Backlight;
 
 typedef void (*lcd_flush_done_callback_t)();
 
+typedef struct LCD_PerfStats {
+  uint32_t flushCount;
+  uint64_t pixelCount;
+  uint64_t totalWriteUs;
+  uint32_t maxWriteUs;
+} LCD_PerfStats;
+
 void ST77916_Init();
 
 void LCD_Init();
 void LCD_SetFlushDoneCallback(lcd_flush_done_callback_t callback);
+LCD_PerfStats LCD_GetPerfStats();
+void LCD_ResetPerfStats();
 void LCD_addWindow(uint16_t Xstart, uint16_t Ystart, uint16_t Xend, uint16_t Yend,uint16_t* color);
 
 // backlight

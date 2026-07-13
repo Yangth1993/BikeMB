@@ -1,9 +1,8 @@
 #include "dashboard_app.h"
 
-#include <Arduino.h>
-
 #include "dashboard_view.h"
-#include "demo_metrics.h"
+#include "platform/bike_platform.h"
+#include "services/metrics_service.h"
 
 namespace {
 
@@ -15,9 +14,9 @@ uint32_t g_renderWorkMs = 0;
 }  // namespace
 
 void DashboardApp_Init() {
-  DemoMetrics_Init();
+  MetricsService_Init();
   DashboardView_Create();
-  g_lastUpdateMs = millis();
+  g_lastUpdateMs = BikePlatform_Millis();
 }
 
 void DashboardApp_SetRenderWorkMs(uint32_t renderWorkMs) {
@@ -32,6 +31,6 @@ void DashboardApp_Tick(uint32_t nowMs) {
   const uint32_t elapsedMs = nowMs - g_lastUpdateMs;
   g_lastUpdateMs = nowMs;
 
-  const DemoMetrics metrics = DemoMetrics_Update(elapsedMs, kFrameIntervalMs, g_renderWorkMs);
+  const DemoMetrics metrics = MetricsService_UpdateDashboard(elapsedMs, kFrameIntervalMs, g_renderWorkMs);
   DashboardView_Update(metrics);
 }
