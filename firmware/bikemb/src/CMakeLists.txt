@@ -1,7 +1,12 @@
 set(BIKEMB_SRCS
     app/dashboard_app.cpp
+    app/dashboard_pages.c
+    app/dashboard_ui_style.c
     app/dashboard_view.cpp
     app/dashboard_view_core.c
+    audio/audio_prompt_assets.cpp
+    audio/audio_prompts.cpp
+    audio/audio_self_test.cpp
     app/demo_metrics.cpp
     app/display_diagnostics.cpp
     drivers/Display_ST77916.cpp
@@ -15,6 +20,7 @@ set(BIKEMB_SRCS
     runtime/bike_runtime.cpp
     services/metrics_service.cpp
     services/ui_service.cpp
+    voice/voice_commands.cpp
 )
 
 idf_component_register(

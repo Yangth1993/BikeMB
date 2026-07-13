@@ -23,6 +23,18 @@ void DashboardApp_SetRenderWorkMs(uint32_t renderWorkMs) {
   g_renderWorkMs = renderWorkMs;
 }
 
+void DashboardApp_NextPage() {
+  DashboardView_NextPage();
+}
+
+void DashboardApp_PreviousPage() {
+  DashboardView_PreviousPage();
+}
+
+void DashboardApp_SetModeChangedCallback(BikeMbDashboardModeChangedCallback callback) {
+  DashboardView_SetModeChangedCallback(callback);
+}
+
 void DashboardApp_Tick(uint32_t nowMs) {
   if (nowMs - g_lastUpdateMs < kFrameIntervalMs) {
     return;

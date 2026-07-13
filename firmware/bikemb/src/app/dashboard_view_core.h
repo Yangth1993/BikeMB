@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+typedef void (*BikeMbDashboardModeChangedCallback)(uint8_t mode_index);
+
 typedef struct BikeMbDashboardMetrics {
   float fps;
   float cpuLoad;
@@ -25,12 +27,14 @@ typedef struct BikeMbDashboardMetrics {
   float temperatureC;
   float gradePercent;
   uint8_t batteryPercent;
-  uint8_t activePage;
   uint8_t wavePhase;
 } BikeMbDashboardMetrics;
 
 void BikeMbDashboardView_Create(void);
 void BikeMbDashboardView_Update(const BikeMbDashboardMetrics *metrics);
+void BikeMbDashboardView_NextPage(void);
+void BikeMbDashboardView_PreviousPage(void);
+void BikeMbDashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallback callback);
 
 #ifdef __cplusplus
 }

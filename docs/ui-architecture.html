@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BikeMB UI Architecture</title>
+  <style>
+    :root {
+      --bg: #07090d;
+      --panel: #151922;
+      --panel-2: #10141b;
+      --line: #2b3440;
+      --text: #edf3f7;
+      --muted: #9aa5ad;
+      --cyan: #18deef;
+      --lime: #b2f526;
+      --warn: #ffb340;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 50% 0%, #161d26 0, var(--bg) 42rem);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      line-height: 1.55;
+    }
+    main {
+      width: min(1120px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 40px 0 56px;
+    }
+    h1, h2, h3 { margin: 0; line-height: 1.15; }
+    h1 { font-size: 34px; letter-spacing: .04em; }
+    h2 { font-size: 22px; margin-top: 34px; }
+    h3 { font-size: 16px; color: var(--cyan); margin-bottom: 8px; }
+    p { color: var(--muted); margin: 10px 0 0; }
+    code { color: var(--lime); }
+    .hero {
+      display: grid;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 26px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 138px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+      align-items: stretch;
+    }
+    .node {
+      border: 1px solid var(--line);
+      background: #0c1016;
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 92px;
+      position: relative;
+    }
+    .node:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -11px;
+      top: 36px;
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      background: #0b0f15;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--cyan); font-weight: 600; }
+    tr:last-child td { border-bottom: 0; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(24, 222, 239, .55);
+      color: var(--cyan);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    @media (max-width: 860px) {
+      .grid, .flow { grid-template-columns: 1fr; }
+      .node::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <h1>BikeMB LVGL UI Architecture</h1>
+    <p>当前 UI 以 LVGL 原生控件实现。设计稿不能直接“转换”为 LVGL 代码，实际流程是把视觉拆成页面、控件、样式、数据绑定和交互事件，再逐项映射到 LVGL 对象。</p>
+  </section>
+
+  <h2>当前分层</h2>
+  <div class="grid">
+    <article class="card">
+      <h3>Runtime</h3>
+      <p><code>bike_runtime</code> 负责事件队列和任务启动。后续真实传感器数据应从这里进入服务层。</p>
+    </article>
+    <article class="card">
+      <h3>Services</h3>
+      <p><code>metrics_service</code> 提供当前 dashboard 数据。现在仍是 demo 数据，后续替换为真实速度、电量和里程。</p>
+    </article>
+    <article class="card">
+      <h3>App / View</h3>
+      <p><code>dashboard_view_core</code> 管页面生命周期和切页，<code>dashboard_pages</code> 管三页布局和动态文本。</p>
+    </article>
+    <article class="card">
+      <h3>Platform / Drivers</h3>
+      <p><code>lvgl_port</code> 注册显示和触摸输入，驱动层处理 LCD、I2C、EXIO 和 CST816。</p>
+    </article>
+  </div>
+
+  <h2>数据流</h2>
+  <div class="flow">
+    <div class="node"><h3>Demo / Sensor</h3><p>速度、功率、电量、里程</p></div>
+    <div class="node"><h3>Metrics Service</h3><p>生成 <code>DemoMetrics</code></p></div>
+    <div class="node"><h3>Dashboard App</h3><p>按固定帧率更新视图</p></div>
+    <div class="node"><h3>Dashboard Pages</h3><p>更新 label、波形和状态</p></div>
+    <div class="node"><h3>LVGL Port</h3><p>flush 到 ST77916，读取 CST816</p></div>
+  </div>
+
+  <h2>设计稿到 LVGL 的映射</h2>
+  <table>
+    <tr><th>设计元素</th><th>LVGL 实现</th><th>注意事项</th></tr>
+    <tr><td>圆形屏背景</td><td><code>lv_obj</code> + 圆角/边框</td><td>圆屏上要保留安全边距，不能把可读文本贴到边缘。</td></tr>
+    <tr><td>大速度数字</td><td><code>lv_label</code> 固定宽度居中</td><td>必须按最大位数预留，例如 <code>99.9</code> 或 <code>100</code>。</td></tr>
+    <tr><td>模式按钮</td><td><code>lv_obj</code> panel + <code>LV_EVENT_CLICKED</code></td><td>点击只做 UI 测试，正式模式状态应进入服务层。</td></tr>
+    <tr><td>波形图</td><td><code>lv_line</code> + 手绘 grid</td><td>当前是轻量实现；若需要坐标轴/填充，可换 <code>lv_chart</code> 或 canvas。</td></tr>
+    <tr><td>详情列表</td><td>重复 row panel + 固定宽度 label</td><td>数值和单位建议拆开，避免长单位挤爆。</td></tr>
+  </table>
+
+  <h2>Figma / Stitch 是否可用</h2>
+  <p><span class="tag">可以用</span>但它们不是 LVGL 代码生成器。推荐把 Figma 或 Stitch 当作视觉定稿工具，导出尺寸、颜色、字体层级、图标和页面状态；实现时仍需要在 LVGL 中手工搭控件树。</p>
+  <p>最可靠的交付格式是：360x360 PNG 预览、颜色 token、字号表、控件坐标/边距、图标 SVG/PNG、每个页面的状态说明。不要依赖自动生成代码直接进固件。</p>
+</main>
+</body>
+</html>
+

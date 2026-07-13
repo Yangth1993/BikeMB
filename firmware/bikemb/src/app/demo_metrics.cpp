@@ -78,7 +78,6 @@ DemoMetrics DemoMetrics_Update(uint32_t elapsedMs, uint32_t targetFrameMs, uint3
   metrics.temperatureC = 18.0f;
   metrics.gradePercent = 4.0f;
   metrics.batteryPercent = 78;
-  metrics.activePage = (now / 5000) % 3;
   metrics.wavePhase = (now / 180) % 24;
   return metrics;
 }

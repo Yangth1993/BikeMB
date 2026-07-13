@@ -6,6 +6,18 @@ void DashboardView_Create() {
   BikeMbDashboardView_Create();
 }
 
+void DashboardView_NextPage() {
+  BikeMbDashboardView_NextPage();
+}
+
+void DashboardView_PreviousPage() {
+  BikeMbDashboardView_PreviousPage();
+}
+
+void DashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallback callback) {
+  BikeMbDashboardView_SetModeChangedCallback(callback);
+}
+
 void DashboardView_Update(const DemoMetrics &metrics) {
   BikeMbDashboardMetrics viewMetrics{};
   viewMetrics.fps = metrics.fps;
@@ -26,7 +38,6 @@ void DashboardView_Update(const DemoMetrics &metrics) {
   viewMetrics.temperatureC = metrics.temperatureC;
   viewMetrics.gradePercent = metrics.gradePercent;
   viewMetrics.batteryPercent = metrics.batteryPercent;
-  viewMetrics.activePage = metrics.activePage;
   viewMetrics.wavePhase = metrics.wavePhase;
 
   BikeMbDashboardView_Update(&viewMetrics);

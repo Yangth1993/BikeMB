@@ -8,6 +8,8 @@ BIKEMB_SIM_UI = "simulator/bikemb_ui/bikemb_dashboard.c"
 BIKEMB_SIM_UI_HEADER = "simulator/bikemb_ui/bikemb_dashboard.h"
 SHARED_DASHBOARD_CORE = "firmware/bikemb/src/app/dashboard_view_core.c"
 SHARED_DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
+SHARED_DASHBOARD_PAGES = "firmware/bikemb/src/app/dashboard_pages.c"
+SHARED_DASHBOARD_STYLE = "firmware/bikemb/src/app/dashboard_ui_style.c"
 FIRMWARE_DASHBOARD_WRAPPER = "firmware/bikemb/src/app/dashboard_view.cpp"
 GITIGNORE = ".gitignore"
 
@@ -71,6 +73,8 @@ def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
     check("simulator\\bikemb_ui" in sync_source, "Sync script must copy the tracked BikeMB UI source.")
     check("dashboard_view_core.c" in sync_source, "Sync script must copy the shared dashboard core into the simulator ui directory.")
     check("dashboard_view_core.h" in sync_source, "Sync script must copy the shared dashboard core header into the simulator ui directory.")
+    check("dashboard_pages.c" in sync_source, "Sync script must copy the shared dashboard pages source.")
+    check("dashboard_ui_style.c" in sync_source, "Sync script must copy the shared dashboard style source.")
     check("lv_port_pc_vscode" in sync_source, "Sync script must target the official LVGL simulator checkout.")
     check("main\\src\\main.c" in sync_source, "Sync script must patch the official simulator main.c entry.")
     check("bikemb_dashboard_create();" in sync_source, "Sync script must switch simulator startup to BikeMB dashboard.")
@@ -86,14 +90,16 @@ def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
 def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
     core_source = read_repo_text(SHARED_DASHBOARD_CORE)
     core_header = read_repo_text(SHARED_DASHBOARD_CORE_HEADER)
+    pages_source = read_repo_text(SHARED_DASHBOARD_PAGES)
     firmware_wrapper = read_repo_text(FIRMWARE_DASHBOARD_WRAPPER)
     simulator_glue = read_repo_text(BIKEMB_SIM_UI)
 
     check("BikeMbDashboardMetrics" in core_header, "Shared dashboard core must expose a platform-neutral metrics struct.")
     check("BikeMbDashboardView_Create" in core_header, "Shared dashboard core must expose a create entry point.")
     check("BikeMbDashboardView_Update" in core_header, "Shared dashboard core must expose an update entry point.")
-    check("BIKEMB LIVE" in core_source, "Shared dashboard core must own the dashboard title rendering.")
-    check("LVGL DEMO DASHBOARD" in core_source, "Shared dashboard core must own the dashboard subtitle rendering.")
+    check("BikeMbDashboardPages_Create" in core_source, "Shared dashboard core must delegate page creation to the page module.")
+    check("SPEED TREND" in pages_source, "Shared dashboard pages module must own dashboard content rendering.")
+    check("RIDE DETAILS" in pages_source, "Shared dashboard pages module must own dashboard detail rendering.")
 
     check("dashboard_view_core.h" in firmware_wrapper, "Firmware dashboard wrapper must include the shared dashboard core.")
     check("BikeMbDashboardView_Create();" in firmware_wrapper, "Firmware dashboard create wrapper must delegate to shared core.")
@@ -108,18 +114,21 @@ def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
 
 def test_dashboard_content_layer_does_not_clip_text() -> None:
     core_source = read_repo_text(SHARED_DASHBOARD_CORE)
+    pages_source = read_repo_text(SHARED_DASHBOARD_PAGES)
+    style_source = read_repo_text(SHARED_DASHBOARD_STYLE)
+    combined_ui_source = core_source + pages_source + style_source
 
     check(
-        "lv_obj_set_style_clip_corner" not in core_source,
+        "lv_obj_set_style_clip_corner" not in combined_ui_source,
         "Dashboard content must not use rounded-corner clipping because it can cut labels on the round display edge.",
     )
     check(
-        "LV_OPA_TRANSP" in core_source,
+        "LV_OPA_TRANSP" in style_source,
         "Dashboard should keep a transparent, non-clipping content layer above the round background.",
     )
     check(
-        "lv_obj_move_foreground" in core_source,
-        "Dashboard stat labels should stay above progress bars to avoid visual overlap.",
+        "BikeMbUi_MakeFixedLabel" in pages_source,
+        "Dashboard stat labels should keep explicit widths to avoid overflow on the round display.",
     )
 
 

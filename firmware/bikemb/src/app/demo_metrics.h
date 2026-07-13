@@ -21,7 +21,6 @@ struct DemoMetrics {
   float temperatureC;
   float gradePercent;
   uint8_t batteryPercent;
-  uint8_t activePage;
   uint8_t wavePhase;
 };
 

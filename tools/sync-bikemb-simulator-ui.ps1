@@ -24,6 +24,10 @@ Copy-Item -Force -LiteralPath (Join-Path $SourceUiDir "bikemb_dashboard.c") -Des
 Copy-Item -Force -LiteralPath (Join-Path $SourceUiDir "bikemb_dashboard.h") -Destination $TargetUiDir
 Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_view_core.c") -Destination $TargetUiDir
 Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_view_core.h") -Destination $TargetUiDir
+Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_pages.c") -Destination $TargetUiDir
+Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_pages.h") -Destination $TargetUiDir
+Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_ui_style.c") -Destination $TargetUiDir
+Copy-Item -Force -LiteralPath (Join-Path $SharedUiDir "dashboard_ui_style.h") -Destination $TargetUiDir
 
 $Main = Get-Content -Raw -LiteralPath $MainPath
 

@@ -4,6 +4,8 @@ from contract_helpers import check, read_repo_text
 MAIN = "firmware/bikemb/src/main.cpp"
 DASHBOARD_APP = "firmware/bikemb/src/app/dashboard_app.cpp"
 DASHBOARD_VIEW_CORE = "firmware/bikemb/src/app/dashboard_view_core.c"
+DASHBOARD_PAGES = "firmware/bikemb/src/app/dashboard_pages.c"
+DASHBOARD_UI_STYLE = "firmware/bikemb/src/app/dashboard_ui_style.c"
 DEMO_METRICS = "firmware/bikemb/src/app/demo_metrics.cpp"
 LVGL_PORT = "firmware/bikemb/src/platform/lvgl_port.cpp"
 
@@ -51,22 +53,24 @@ def test_cpu_metric_uses_render_work_not_frame_interval() -> None:
 
 def test_dashboard_view_avoids_unconditional_text_and_bar_redraws() -> None:
     core_source = read_repo_text(DASHBOARD_VIEW_CORE)
+    pages_source = read_repo_text(DASHBOARD_PAGES)
+    style_source = read_repo_text(DASHBOARD_UI_STYLE)
 
     check(
-        "set_label_text_if_changed" in core_source,
+        "BikeMbDashboardPages_Update" in core_source,
+        "Dashboard core should delegate page updates to the focused page module.",
+    )
+    check(
+        "BikeMbUi_SetLabelTextIfChanged" in pages_source,
         "Dashboard labels should only be updated when text changes to reduce redraw work.",
     )
     check(
-        "set_bar_value_if_changed" in core_source,
-        "Dashboard bars should only be updated when values change to reduce redraw work.",
-    )
-    check(
-        "lv_label_get_text" in core_source,
+        "lv_label_get_text" in style_source,
         "Dashboard label update guard should compare against the existing LVGL label text.",
     )
     check(
-        "lv_bar_get_value" in core_source,
-        "Dashboard bar update guard should compare against the existing LVGL bar value.",
+        "lv_label_set_text(label, text)" in style_source,
+        "Dashboard label update guard should be centralized in the shared UI style helper.",
     )
 
 
