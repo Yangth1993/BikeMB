@@ -1,119 +1,119 @@
 # AGENTS.md
 
-## Project Role
+## 项目角色
 
-You are assisting with BikeMB embedded firmware development.
+你正在协助 BikeMB 嵌入式固件开发。
 
-Optimize for:
+优先优化：
 
-- token efficiency
-- minimal context gathering
-- minimal safe changes
-- hardware safety
+- token 效率
+- 最小上下文获取
+- 最小安全改动
+- 硬件安全
 
-This file is for agent collaboration, not human onboarding. Keep actions narrow, explicit, and cheap unless the user asks for broader work.
+本文件用于代理协作，不是面向人的入门文档。除非用户要求扩大范围，否则行动应保持狭窄、明确、低成本。
 
-## Hard Rules
+## 硬规则
 
-- Prefer the smallest useful scope.
-- Do not expand file search or refactor broadly unless requested.
-- Read project context before code when starting a task:
+- 优先选择最小有用范围。
+- 未经请求，不扩大文件搜索范围，不做大范围重构。
+- 开始任务时，先读项目上下文再读代码：
   - `README.md`
   - `openspec/`
   - `docs/project-context.md`
-- Follow OpenSpec-first workflow for feature work and behavior changes.
-- Preserve existing architecture and public interfaces unless the task requires change.
-- Prefer diagnostic steps before high-risk firmware edits.
+- 涉及功能或行为变更时，遵循 OpenSpec 优先流程。
+- 除非任务要求，否则保留现有架构和公共接口。
+- 高风险固件改动前，优先做诊断。
 
-## Model Selection Rules
+## 模型选择规则
 
-- Use `gpt-5.5` for:
-  - RTOS work
-  - DMA issues
-  - bootloader issues
-  - linker issues
-  - register-level debugging
-  - complex bugs spanning multiple files
-- Use `gpt-5.4-mini` for:
-  - driver scaffolding
-  - tests
-  - CMake changes
-  - small refactors
-  - mocks
-- Use `gpt-5.4-mini` or `gpt-5.3-codex-spark` for:
-  - documentation
-  - comments
-  - changelogs
-  - naming-only changes
-- Fallbacks:
-  - if `gpt-5.5` is unavailable, fall back to `gpt-5.4-mini`
-  - if `gpt-5.3-codex-spark` is unavailable, fall back to `gpt-5.4-mini`
+- 遇到以下任务使用 `gpt-5.5`：
+  - RTOS 工作
+  - DMA 问题
+  - bootloader 问题
+  - linker 问题
+  - 寄存器级调试
+  - 跨多文件的复杂 bug
+- 遇到以下任务使用 `gpt-5.4-mini`：
+  - 驱动骨架
+  - 测试
+  - CMake 修改
+  - 小重构
+  - mock
+- 遇到以下任务使用 `gpt-5.4-mini` 或 `gpt-5.3-codex-spark`：
+  - 文档
+  - 注释
+  - changelog
+  - 仅命名修改
+- 回退规则：
+  - 如果 `gpt-5.5` 不可用，回退到 `gpt-5.4-mini`
+  - 如果 `gpt-5.3-codex-spark` 不可用，回退到 `gpt-5.4-mini`
 
-## Token-Saving Rules
+## Token 节省规则
 
-- Start with the smallest relevant path.
-- On first pass, inspect only 3 to 5 files.
-- Before reading more than 8 files, summarize findings first.
-- Prefer `rg`/targeted search over opening large files.
-- Read only the sections needed to answer the task.
-- Do not inspect these unless clearly necessary or explicitly requested:
+- 从最小相关路径开始。
+- 第一轮只检查 3 到 5 个文件。
+- 读取超过 8 个文件前，先总结当前发现。
+- 优先使用 `rg` 或定向搜索，避免打开大文件。
+- 只读取完成任务所需的片段。
+- 除非明确必要或用户要求，不检查：
   - `ESP32_Datas/`
   - `.pio/`
-  - build output directories
-  - generated code
-  - vendor or third-party source trees
-- Do not paste large code blocks or full files unless requested.
-- Prefer short summaries, focused diffs, and key snippets.
+  - 构建输出目录
+  - 生成代码
+  - vendor 或第三方源码树
+- 除非用户要求，不粘贴大段代码或完整文件。
+- 优先提供短总结、聚焦 diff、关键片段。
 
-## Code Change Rules
+## 代码修改规则
 
-- State the issue and the smallest safe patch before editing.
-- Change only files directly related to the task.
-- Do not rewrite whole files without need.
-- Do not refactor unrelated code.
-- Do not modify generated or vendor files unless explicitly requested.
-- Do not touch boot-critical paths unless the task clearly requires it.
-- Preserve coding style and existing APIs where possible.
-- Prefer explicit, low-risk fixes over clever rewrites.
+- 编辑前说明问题和最小安全补丁思路。
+- 只修改与任务直接相关的文件。
+- 不无故重写整个文件。
+- 不重构无关代码。
+- 除非明确要求，不修改生成文件或 vendor 文件。
+- 除非任务明确需要，不触碰启动关键路径。
+- 尽量保持现有代码风格和 API。
+- 优先选择明确、低风险的修复，不使用聪明但脆弱的重写。
 
-## Verification Rules
+## 验证规则
 
-- After firmware changes, run the smallest relevant validation first.
-- Prefer targeted build/test commands over full workflows.
-- If local validation is not possible, say so clearly.
-- When hardware testing is needed, provide concrete board-level checks such as:
-  - serial logs
-  - display output
-  - button/touch input
-  - power/reset behavior
-  - protocol waveforms when relevant
+- 固件改动后，先运行最小相关验证。
+- 优先使用定向 build/test 命令，避免全流程。
+- 如果无法本地验证，明确说明。
+- 需要硬件测试时，给出具体板级检查项，例如：
+  - 串口日志
+  - 屏幕输出
+  - 按键/触摸输入
+  - 电源/复位行为
+  - 相关协议波形
 
-## Sleep Handoff Rule
+## 睡前交接规则
 
-When the user says `我睡觉了，下次见`:
+当用户说 `我睡觉了，下次见` 时：
 
-- Stop starting new implementation work.
-- Save a short context snapshot to `docs/session-handoff.md`.
-- Include only:
-  - current objective
-  - latest stable git commit
-  - uncommitted files, if any
-  - verified commands/results
-  - next recommended step
-  - known risks/blockers
-- Run the smallest relevant tests before committing if code changed.
-- Commit all intentional project changes.
-- Do not commit ignored local artifacts such as `.pio/`, `tools/lv_port_pc_vscode/`, `.vscode/`, `TrueDebug/`, or `ESP32_Datas/`.
-- Final reply should remind the user what to do next after reboot.
-- Keep the handoff concise enough to read in under one minute.
+- 停止启动新的实现工作。
+- 将简短上下文快照保存到 `docs/session-handoff.md`。
+- 只包含：
+  - 当前目标
+  - 最新稳定 git commit
+  - 未提交文件，如有
+  - 已验证命令/结果
+  - 下一步建议
+  - 已知风险/阻塞
+- 如果代码有变化，提交前运行最小相关测试。
+- 提交所有有意的项目变更。
+- 不提交被忽略的本地产物，例如 `.pio/`、`tools/lv_port_pc_vscode/`、`.vscode/`、`TrueDebug/`、`ESP32_Datas/`。
+- 最终回复应提醒用户重启后下一步做什么。
+- 交接内容应足够简洁，能在一分钟内读完。
 
-## High-Risk Areas
+## 高风险区域
 
-Be extra careful with changes involving:
+涉及以下内容时要格外谨慎：
 
-- linker, startup code, or bootloader
-- clock tree or interrupt priority
-- flash layout or erase/write logic
-- watchdog or power management
+- linker、startup code 或 bootloader
+- clock tree 或 interrupt priority
+- flash layout 或擦写逻辑
+- watchdog 或 power management
 
-When evidence is missing, state assumptions clearly and choose the safest minimal path.
+证据不足时，明确说明假设，并选择最安全的最小路径。
