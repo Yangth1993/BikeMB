@@ -83,22 +83,38 @@ def test_mode_changes_use_a_dashboard_callback() -> None:
     check("DashboardApp_SetModeChangedCallback" in app_header, "Dashboard app must expose mode callback registration.")
 
 
-def test_local_tts_generator_documents_male_voice_and_phrases() -> None:
-    check((REPO_ROOT / GENERATOR).exists(), "Local prompt generator script must exist.")
+def test_prompt_generator_uses_external_audio_assets() -> None:
+    check((REPO_ROOT / GENERATOR).exists(), "Prompt generator script must exist.")
     script = read_repo_text(GENERATOR)
 
-    check("Microsoft Kangkang" in script, "Generator must use the local zh-CN male voice.")
-    check("经济模式" in script, "Generator must include the ECO phrase.")
-    check("越野模式" in script, "Generator must include the TRAIL phrase.")
-    check("增强模式" in script, "Generator must include the BOOST phrase.")
+    check("generated_audio" in script, "Generator must default to the provided generated_audio assets.")
+    check("eco.mp3" in script, "Generator must read the ECO source audio.")
+    check("trail.mp3" in script, "Generator must read the TRAIL source audio.")
+    check("boost.mp3" in script, "Generator must read the BOOST source audio.")
+    check("ConvertTo-PcmWav" in script, "Generator must convert source audio to PCM WAV before asset generation.")
     check("audio_prompt_assets.cpp" in script, "Generator must write firmware prompt assets.")
     check("16000" in script, "Generator must require 16 kHz prompt WAV files.")
     check("16-bit mono PCM" in script, "Generator must document the expected WAV format.")
+
+
+def test_mode_prompt_playback_is_async_and_interruptible() -> None:
+    source = read_repo_text(PROMPTS_SOURCE)
+
+    check("xTaskCreate" in source, "Audio prompts must create a background playback task.")
+    check("xTaskNotify" in source, "Mode clicks must notify the playback task instead of playing inline.")
+    check("g_promptTask" in source, "Audio prompts must keep a task handle for async playback.")
+    check("g_requestSerial" in source, "Audio prompts must track request versions so newer prompts interrupt older ones.")
+    check("expectedSerial != getRequestSerial()" in source, "Prompt writes must stop when a newer mode request arrives.")
+
+    play_mode_body = source.split("void BikeMbAudioPrompts_PlayMode(BikeMbAudioPromptMode mode)", 1)[1]
+    play_mode_body = play_mode_body.split("#else", 1)[0]
+    check("writePrompt(" not in play_mode_body, "BikeMbAudioPrompts_PlayMode must return without writing full PCM data.")
 
 
 if __name__ == "__main__":
     test_mode_audio_prompts_are_present_but_default_off()
     test_mode_audio_prompts_are_part_of_existing_bikemb_build()
     test_mode_changes_use_a_dashboard_callback()
-    test_local_tts_generator_documents_male_voice_and_phrases()
+    test_prompt_generator_uses_external_audio_assets()
+    test_mode_prompt_playback_is_async_and_interruptible()
     print("PASS test_audio_prompts_contract")

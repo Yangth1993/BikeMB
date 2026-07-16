@@ -238,26 +238,36 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 | 函数/类型 | 作用 |
 | --- | --- |
 | `BikeMbAudioPromptMode` | 枚举：`ECO`、`TRAIL`、`BOOST`。值和 UI mode index 对齐。 |
-| `BikeMbAudioPrompts_Init()` | 初始化 GPIO15、ES8311、I2S 喇叭输出。 |
-| `BikeMbAudioPrompts_PlayMode(BikeMbAudioPromptMode mode)` | 播放对应档位的 PCM 语音。 |
+| `BikeMbAudioPrompts_Init()` | 初始化 GPIO15、ES8311、I2S 喇叭输出，并创建后台播放 task。 |
+| `BikeMbAudioPrompts_PlayMode(BikeMbAudioPromptMode mode)` | 提交档位语音播放请求后立即返回，不阻塞 UI 档位切换。 |
 
 私有实现：
 
 | 函数/数据 | 作用 |
 | --- | --- |
 | `initSpeakerCodec()` | 配置 ES8311，逻辑和音频自检输出一致。 |
-| `writePrompt(...)` | 把 16 kHz mono PCM 复制成 stereo I2S frame 输出。 |
+| `promptTask(...)` | 后台等待 `xTaskNotify`，收到最新档位请求后播放对应 PCM。 |
+| `g_requestSerial` | 播放请求版本号。连续切换档位时，新版本会让旧语音在下一个 chunk 前中断。 |
+| `writePrompt(...)` | 把 16 kHz mono PCM 复制成 stereo I2S frame 输出，并检查是否被新请求打断。 |
 | `kBikeMbPromptEcoPcm` | `经济模式` 的 PCM 数据。 |
 | `kBikeMbPromptTrailPcm` | `越野模式` 的 PCM 数据。 |
 | `kBikeMbPromptBoostPcm` | `增强模式` 的 PCM 数据。 |
 
+播放时序：
+
+1. UI 点击档位后先更新页面状态。
+2. `main.cpp` 的 `HandleModeChanged(...)` 调用 `BikeMbAudioPrompts_PlayMode(...)`。
+3. `BikeMbAudioPrompts_PlayMode(...)` 只更新 `g_requestedMode` / `g_requestSerial`，再用 `xTaskNotify(..., eSetValueWithOverwrite)` 唤醒后台 task。
+4. `promptTask(...)` 在后台写 I2S。每写一个小块前比较 `expectedSerial != getRequestSerial()`。
+5. 如果用户连续切换档位，旧语音停止，后台 task 转去播放最新档位语音。
+
 语音资产生成流程：
 
 1. 运行 `powershell -ExecutionPolicy Bypass -File tools\generate-mode-prompts.ps1`。
-2. 脚本使用 Windows 本地男声 `Microsoft Kangkang`。
-3. 临时 WAV 输出到 `build/generated-prompts`。
-4. WAV 要求是 `16-bit mono PCM, 16000 Hz`。
-5. 脚本把 WAV 转成 `audio_prompt_assets.cpp` 里的 C 数组。
+2. 脚本默认读取 `generated_audio/eco.mp3`、`generated_audio/trail.mp3`、`generated_audio/boost.mp3`。
+3. Windows Media Transcoder 先把源音频转为临时 WAV，输出到 `build/generated-prompts`。
+4. 脚本再下混/重采样为 `16-bit mono PCM, 16000 Hz`。
+5. 脚本把 PCM 转成 `audio_prompt_assets.cpp` 里的 C 数组。
 6. `audio_prompt_assets.cpp` 本身也受 `BIKE_MB_ENABLE_AUDIO_PROMPTS` 保护，所以默认固件不会带入大语音数组。
 
 当前限制：档位播报和 ESP-SR 识别都会使用 I2S 音频链路。现在先放在不同测试环境里，后续如果要同时“边听边播”，需要增加共享音频管理或暂停/恢复识别策略。

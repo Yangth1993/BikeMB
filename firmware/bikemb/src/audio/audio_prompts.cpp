@@ -9,6 +9,8 @@
 #include <Arduino.h>
 #include "ESP_I2S.h"
 #include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "../drivers/I2C_Driver.h"
 #include "audio_prompt_assets.h"
@@ -21,6 +23,10 @@ constexpr uint16_t kSamplesPerChunk = 96;
 
 I2SClass g_i2s(I2S_NUM_0);
 bool g_audioReady = false;
+TaskHandle_t g_promptTask = nullptr;
+portMUX_TYPE g_promptMux = portMUX_INITIALIZER_UNLOCKED;
+BikeMbAudioPromptMode g_requestedMode = BIKE_MB_AUDIO_PROMPT_MODE_ECO;
+uint32_t g_requestSerial = 0;
 
 bool writeRegister(uint8_t reg, uint8_t value) {
   return !I2C_Write(kEs8311Address, reg, &value, 1);
@@ -56,7 +62,29 @@ bool initSpeakerCodec() {
   return ok;
 }
 
-void writePrompt(const int16_t *samples, uint32_t sampleCount) {
+uint32_t getRequestSerial() {
+  portENTER_CRITICAL(&g_promptMux);
+  const uint32_t requestSerial = g_requestSerial;
+  portEXIT_CRITICAL(&g_promptMux);
+  return requestSerial;
+}
+
+void getRequest(BikeMbAudioPromptMode *mode, uint32_t *requestSerial) {
+  portENTER_CRITICAL(&g_promptMux);
+  *mode = g_requestedMode;
+  *requestSerial = g_requestSerial;
+  portEXIT_CRITICAL(&g_promptMux);
+}
+
+uint32_t setRequest(BikeMbAudioPromptMode mode) {
+  portENTER_CRITICAL(&g_promptMux);
+  g_requestedMode = mode;
+  const uint32_t requestSerial = ++g_requestSerial;
+  portEXIT_CRITICAL(&g_promptMux);
+  return requestSerial;
+}
+
+void writePrompt(const int16_t *samples, uint32_t sampleCount, uint32_t expectedSerial) {
   if (!g_audioReady || samples == nullptr || sampleCount == 0) {
     return;
   }
@@ -64,6 +92,10 @@ void writePrompt(const int16_t *samples, uint32_t sampleCount) {
   int16_t stereo[kSamplesPerChunk * 2];
   uint32_t writtenSamples = 0;
   while (writtenSamples < sampleCount) {
+    if (expectedSerial != getRequestSerial()) {
+      return;
+    }
+
     const uint16_t chunkSamples =
         static_cast<uint16_t>(min<uint32_t>(kSamplesPerChunk, sampleCount - writtenSamples));
     for (uint16_t i = 0; i < chunkSamples; ++i) {
@@ -73,6 +105,44 @@ void writePrompt(const int16_t *samples, uint32_t sampleCount) {
     }
     g_i2s.write(reinterpret_cast<const uint8_t *>(stereo), chunkSamples * 2 * sizeof(stereo[0]));
     writtenSamples += chunkSamples;
+  }
+}
+
+void playRequestedPrompt(BikeMbAudioPromptMode mode, uint32_t requestSerial) {
+  if (mode == BIKE_MB_AUDIO_PROMPT_MODE_ECO) {
+    writePrompt(kBikeMbPromptEcoPcm, kBikeMbPromptEcoPcmSampleCount, requestSerial);
+  } else if (mode == BIKE_MB_AUDIO_PROMPT_MODE_TRAIL) {
+    writePrompt(kBikeMbPromptTrailPcm, kBikeMbPromptTrailPcmSampleCount, requestSerial);
+  } else if (mode == BIKE_MB_AUDIO_PROMPT_MODE_BOOST) {
+    writePrompt(kBikeMbPromptBoostPcm, kBikeMbPromptBoostPcmSampleCount, requestSerial);
+  }
+}
+
+void promptTask(void *parameter) {
+  (void)parameter;
+
+  uint32_t handledSerial = 0;
+  for (;;) {
+    uint32_t notifiedSerial = 0;
+    xTaskNotifyWait(0, UINT32_MAX, &notifiedSerial, portMAX_DELAY);
+    if (notifiedSerial <= handledSerial) {
+      continue;
+    }
+
+    for (;;) {
+      BikeMbAudioPromptMode mode = BIKE_MB_AUDIO_PROMPT_MODE_ECO;
+      uint32_t requestSerial = 0;
+      getRequest(&mode, &requestSerial);
+      if (requestSerial <= handledSerial) {
+        break;
+      }
+
+      playRequestedPrompt(mode, requestSerial);
+      if (requestSerial == getRequestSerial()) {
+        handledSerial = requestSerial;
+        break;
+      }
+    }
   }
 }
 
@@ -97,17 +167,22 @@ void BikeMbAudioPrompts_Init(void) {
     return;
   }
 
+  if (xTaskCreate(promptTask, "bikemb_prompt", 4096, nullptr, 1, &g_promptTask) != pdPASS) {
+    g_promptTask = nullptr;
+    Serial.println("[BikeMB][audio] prompt task create failed");
+    return;
+  }
+
   Serial.println("[BikeMB][audio] mode prompts ready");
 }
 
 void BikeMbAudioPrompts_PlayMode(BikeMbAudioPromptMode mode) {
-  if (mode == BIKE_MB_AUDIO_PROMPT_MODE_ECO) {
-    writePrompt(kBikeMbPromptEcoPcm, kBikeMbPromptEcoPcmSampleCount);
-  } else if (mode == BIKE_MB_AUDIO_PROMPT_MODE_TRAIL) {
-    writePrompt(kBikeMbPromptTrailPcm, kBikeMbPromptTrailPcmSampleCount);
-  } else if (mode == BIKE_MB_AUDIO_PROMPT_MODE_BOOST) {
-    writePrompt(kBikeMbPromptBoostPcm, kBikeMbPromptBoostPcmSampleCount);
+  if (!g_audioReady || g_promptTask == nullptr) {
+    return;
   }
+
+  const uint32_t requestSerial = setRequest(mode);
+  xTaskNotify(g_promptTask, requestSerial, eSetValueWithOverwrite);
 }
 
 #else

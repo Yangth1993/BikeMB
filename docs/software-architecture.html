@@ -633,17 +633,21 @@
             <h3>audio_prompts</h3>
             <p>文件：<code>audio_prompts.h/cpp</code>、<code>audio_prompt_assets.h/cpp</code></p>
             <p>入口：<code>BikeMbAudioPrompts_Init</code>、<code>BikeMbAudioPrompts_PlayMode</code></p>
+            <p><code>PlayMode</code> 只提交播放请求并立即返回；实际 I2S 写入由后台 task 执行。</p>
           </article>
         </div>
         <table style="margin-top:14px">
           <tr><th>函数/数据</th><th>作用</th></tr>
           <tr><td><code>initSpeakerCodec()</code></td><td>配置 ES8311，I2C 地址 <code>0x18</code>。</td></tr>
-          <tr><td><code>writePrompt(...)</code></td><td>把 16 kHz mono PCM 复制成 stereo I2S frame 输出。</td></tr>
+          <tr><td><code>promptTask(...)</code></td><td>后台等待 <code>xTaskNotify</code>，收到最新档位请求后播放对应 PCM。</td></tr>
+          <tr><td><code>g_requestSerial</code></td><td>播放请求版本号。连续切换档位时，新版本会让旧语音在下一个 chunk 前中断。</td></tr>
+          <tr><td><code>writePrompt(...)</code></td><td>把 16 kHz mono PCM 复制成 stereo I2S frame 输出，并检查是否被新请求打断。</td></tr>
           <tr><td><code>kBikeMbPromptEcoPcm</code></td><td>“经济模式”的 PCM 数据。</td></tr>
           <tr><td><code>kBikeMbPromptTrailPcm</code></td><td>“越野模式”的 PCM 数据。</td></tr>
           <tr><td><code>kBikeMbPromptBoostPcm</code></td><td>“增强模式”的 PCM 数据。</td></tr>
         </table>
-        <div class="callout good">语音资产生成：运行 <code>tools/generate-mode-prompts.ps1</code>，使用本地男声 <code>Microsoft Kangkang</code> 生成 WAV，再转换成 <code>audio_prompt_assets.cpp</code>。默认固件不会带入大语音数组。</div>
+        <div class="callout good">播放时序：UI 点击档位后立即更新页面；<code>HandleModeChanged</code> 调用 <code>BikeMbAudioPrompts_PlayMode</code>；播放请求写入 <code>g_requestedMode</code> / <code>g_requestSerial</code> 后通过 <code>xTaskNotify(..., eSetValueWithOverwrite)</code> 唤醒后台 task。连续点击时旧语音会被新请求打断。</div>
+        <div class="callout good">语音资产生成：运行 <code>tools/generate-mode-prompts.ps1</code>，默认读取 <code>generated_audio/eco.mp3</code>、<code>generated_audio/trail.mp3</code>、<code>generated_audio/boost.mp3</code>，转成 <code>16-bit mono PCM, 16000 Hz</code> 后写入 <code>audio_prompt_assets.cpp</code>。默认固件不会带入大语音数组。</div>
       </section>
 
       <section id="voice">
