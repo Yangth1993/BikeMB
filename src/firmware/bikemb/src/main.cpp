@@ -6,8 +6,10 @@
 
 #include "audio/audio_prompts.h"
 #include "audio/audio_self_test.h"
+#include "ai/ai_assistant.h"
 #include "app/dashboard_app.h"
 #include "app/display_diagnostics.h"
+#include "input/ai_button.h"
 #include "platform/board_support.h"
 #include "platform/bike_platform.h"
 #include "platform/lvgl_port.h"
@@ -28,6 +30,10 @@
 
 #ifndef BIKE_MB_ENABLE_AUDIO_PROMPTS
 #define BIKE_MB_ENABLE_AUDIO_PROMPTS 0
+#endif
+
+#ifndef BIKE_MB_ENABLE_AI_ASSISTANT
+#define BIKE_MB_ENABLE_AI_ASSISTANT 0
 #endif
 
 namespace {
@@ -100,6 +106,10 @@ void setup() {
   Serial.println("[BikeMB] bikemb lvgl demo boot");
 
   BoardSupport_Init();
+#if BIKE_MB_ENABLE_AI_ASSISTANT
+  BikeMbAiAssistant_Init();
+  BikeMbAiButton_Init();
+#endif
   BikeMbAudioPrompts_Init();
   BikeMbAudioSelfTest_Init();
   BikeMbVoiceCommands_Init();
@@ -120,6 +130,9 @@ void loop() {
   delay(1000);
 #else
   const uint32_t now = millis();
+#if BIKE_MB_ENABLE_AI_ASSISTANT
+  BikeMbAiButton_Tick(now);
+#endif
   const uint32_t deltaMs = now - g_lastTickMs;
   g_lastTickMs = now;
 

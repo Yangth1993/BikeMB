@@ -82,8 +82,20 @@ def test_runtime_ownership_contract():
     assert "BikeMbAiAssistant_Cancel" in header
 
 
+def test_main_integration_is_feature_gated():
+    main = read_text(FIRMWARE_ROOT / "src" / "main.cpp")
+    assert "#ifndef BIKE_MB_ENABLE_AI_ASSISTANT" in main
+    assert "BikeMbAiAssistant_Init();" in main
+    assert "BikeMbAiButton_Init();" in main
+    assert "BikeMbAiButton_Tick(now);" in main
+    init_pos = main.index("BikeMbAiAssistant_Init();")
+    lvgl_pos = main.index("LvglPort_Init();")
+    assert init_pos < lvgl_pos
+
+
 if __name__ == "__main__":
     test_configuration_contract()
     test_native_ai_reducers()
     test_runtime_ownership_contract()
+    test_main_integration_is_feature_gated()
     print("PASS test_ai_framework")
