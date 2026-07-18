@@ -54,7 +54,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Button["独立 AI 实体键"] --> Assistant["AI Assistant"]
+  Button["BOOT / AI 实体键<br/>GPIO0，启动 3 s 后启用"] --> Assistant["AI Assistant"]
   Assistant --> Session["Audio Session"]
   Session --> Mic["ES7210 麦克风"]
   Session --> Speaker["ES8311 喇叭"]
@@ -85,7 +85,7 @@ flowchart LR
 
 语音问答采用 V1 分阶段直连流程：
 
-1. 独立 AI 键按下，AI 编排器停止当前音乐并请求录音会话。
+1. 上电满 3 秒且 BOOT 键已连续释放 50 ms 后，复用的 BOOT/AI 键才解锁；随后按下时，AI 编排器停止当前音乐并请求录音会话。
 2. 音频会话把 `16 kHz`、`16-bit`、mono PCM 写入 PSRAM，最长 `10` 秒。
 3. 按键松开后封装为 WAV，通过 HTTPS 发送给 STT provider。
 4. 转写文本发送给 DeepSeek，回答限制为适合语音播报的短文本。

@@ -219,4 +219,4 @@ Stream Player 只消费 `BikeMbMusicStreamDescriptor`，不接收歌曲名，不
 
 tracked 示例配置必须使用明显占位符。正式代码不得在串口输出上述敏感值。
 
-板级 `AI_BUTTON_GPIO`、有效电平和上下拉配置不属于敏感信息，但必须在核对原理图并上板验证后才能加入 tracked board config。不得复用 BOOT、复位或电源控制引脚，除非另有硬件 ADR。
+V1 的板级按键配置由 ADR-0003 固定为 `AI_BUTTON_GPIO=0`、低电平有效、板载 `10 kΩ` 上拉、`3000 ms` 启动保护和 `50 ms` 释放解锁。该配置允许进入 tracked board config。GPIO0 仍保留 ROM 下载模式 strap 语义，按住 BOOT 上电或复位会阻止正常应用启动。

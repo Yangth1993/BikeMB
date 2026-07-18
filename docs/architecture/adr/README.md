@@ -8,6 +8,7 @@
 
 - `0001-short-title.md`
 - `0002-short-title.md`
+- `0003-short-title.md`
 
 ## 模板
 

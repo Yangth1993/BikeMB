@@ -2,34 +2,56 @@
 
 ## ADDED Requirements
 
-### Requirement: 独立实体键按住说话
+### Requirement: 复用 BOOT 实体键按住说话
 
-系统应仅在用户按住独立实体 AI 按键时录音，并在松开按键后提交本次语音请求。
+系统应仅在启动保护完成后、用户按住复用的 `Key1/BOOT (GPIO0)` 时录音，并在松开按键后提交本次语音请求。按键低电平有效，使用板载 `10 kΩ` 上拉。
+
+#### Scenario: 启动保护期忽略按键
+
+- Given 设备上电未满 3000 ms
+- When GPIO0 电平发生变化或 BOOT 键被按住
+- Then 系统不应产生 AI `PRESS` 或 `RELEASE` 事件
+- And 系统不应开始录音
+
+#### Scenario: 释放后才解锁
+
+- Given 设备已经上电满 3000 ms
+- And BOOT 键从启动阶段持续处于按下状态
+- When 系统尚未观察到连续 50 ms 的释放状态
+- Then AI 按键应保持未解锁
+- And 系统不应补发 `PRESS`
+
+#### Scenario: 运行态按键消抖
+
+- Given AI 按键已在连续释放 50 ms 后解锁
+- When GPIO0 连续保持低电平 30 ms
+- Then 系统应产生一次 AI `PRESS`
+- And 后续抖动不应重复产生 `PRESS`
 
 #### Scenario: 按下后开始录音
 
 - Given AI 助手已启用、配置有效且 Wi-Fi 已连接
 - And AI 助手处于 `Idle`
-- When 用户按下独立 AI 按键
+- When 用户按下已解锁的 BOOT/AI 按键
 - Then 系统应进入 `Recording`
 - And 系统应开始采集有时长上限的麦克风音频
 
 #### Scenario: 松开后停止录音
 
 - Given 系统处于 `Recording`
-- When 用户松开独立 AI 按键
+- When 用户松开 BOOT/AI 按键
 - Then 系统应停止采集音频
 - And 系统应进入 `Recognizing`
 
 #### Scenario: 未按键时不录音
 
-- Given 用户没有按住独立 AI 按键
+- Given 用户没有按住 BOOT/AI 按键
 - When 设备处于普通码表显示或 AI 空闲状态
 - Then 系统不应采集 AI 语音录音
 
 #### Scenario: 录音达到上限
 
-- Given 用户持续按住独立 AI 按键
+- Given 用户持续按住 BOOT/AI 按键
 - When 录音达到 10 秒上限
 - Then 系统应停止录音
 - And 系统应提示本次录音超时
@@ -164,7 +186,7 @@
 
 - Given 系统处于 `Recognizing`、`Thinking`、`Synthesizing`、`Speaking`、`ConnectingMusic` 或 `MusicPlaying`
 - And Wi-Fi 已连接
-- When 用户再次按下独立 AI 按键
+- When 用户再次按下已解锁的 BOOT/AI 按键
 - Then 系统应使旧 request ID 失效
 - And 系统应停止旧音频并进入新的 `Recording`
 

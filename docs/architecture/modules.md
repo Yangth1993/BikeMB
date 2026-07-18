@@ -16,7 +16,7 @@
 | Audio Self Test | 喇叭、麦克风、串口模拟命令验证 | `src/audio/audio_self_test.*` |
 | Voice Commands | ESP-SR 直接语音命令测试路径 | `src/voice/voice_commands.*` |
 | Runtime | ESP-IDF 事件队列和服务骨架 | `src/runtime/*`, `src/services/*` |
-| AI Button | 独立实体键消抖，产生 press/release/cancel 命令 | `src/input/ai_button.*`（计划） |
+| AI Button | BOOT/AI 键启动保护与消抖，产生 press/release 命令 | `src/input/ai_button.*`（计划） |
 | AI Assistant | 编排 AI 状态、超时、取消和状态快照 | `src/ai/ai_assistant.*`（计划） |
 | Cloud Worker | 在独立 task 执行阻塞式云调用并返回带 request ID 的结果 | `src/ai/cloud_worker.*`（计划） |
 | Wi-Fi Service | AI 启用时维持连接并发布连接状态 | `src/network/wifi_service.*`（计划） |
@@ -55,7 +55,9 @@ ESP-IDF Runtime 当前用于验证未来服务化结构。新功能迁入前需�
 - 只负责 GPIO、电平语义和消抖，不判断云端状态。
 - 按下产生 `PRESS`，松开产生 `RELEASE`。独立的 `CANCEL` 只来自 AI 页面；忙态再次按下由 AI Assistant 解释为“取消旧请求并开始新录音”。
 - 按键 GPIO 由板级配置提供，业务模块不得写死引脚。
-- 当前板级 GPIO、电平和上下拉尚未确认。完成原理图核对和上板验证前，只允许使用可注入配置或测试替身开发该模块。
+- V1 复用板载 `Key1/BOOT`：`GPIO0`、低电平有效、板载 `10 kΩ` 上拉，详见 ADR-0003。
+- 上电后前 `3000 ms` 忽略按键；满 `3000 ms` 后还必须先观察到连续 `50 ms` 的释放电平才允许产生首个 `PRESS`。这避免按键从启动阶段一直被按住时自动开始录音。
+- GPIO0 在复位采样阶段仍是下载模式 strap；按住 BOOT 上电或复位会进入 ROM 下载模式，固件延时无法消除该行为。
 
 ### AI Assistant
 

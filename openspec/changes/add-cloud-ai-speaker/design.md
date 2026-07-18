@@ -2,13 +2,13 @@
 
 ## Summary
 
-Cloud AI assistant mode is a future experimental BikeMB capability. V1 lets the user hold a dedicated physical button, ask a short question, release the button to submit it, receive a spoken answer, and optionally play a configured cloud audio stream through the onboard speaker.
+Cloud AI assistant mode is a future experimental BikeMB capability. V1 lets the user hold the reused BOOT/AI physical button after its startup guard, ask a short question, release the button to submit it, receive a spoken answer, and optionally play a configured cloud audio stream through the onboard speaker.
 
 The feature must stay separate from the first-stage bicycle computer MVP. Core ride display remains local and available when the AI service, Wi-Fi, or music stream is unavailable.
 
 ## Product behavior
 
-- The user starts one interaction by pressing and holding a dedicated physical AI button and submits it by releasing the button.
+- The user starts one interaction by pressing and holding the reused `Key1/BOOT (GPIO0)` button after its startup guard and submits it by releasing the button.
 - BikeMB records only while that button is held, with a maximum duration of 10 seconds.
 - The V1 AI answer covers short general questions. Ride-context questions and device-control commands are deferred.
 - Music playback uses a preset HTTPS stream URL or a user URL from private configuration. V1 does not support voice point-song requests.
@@ -20,7 +20,7 @@ The feature must stay separate from the first-stage bicycle computer MVP. Core r
 
 The later implementation should keep these responsibilities separate:
 
-- `ai_button`: debounces the dedicated button and emits press/release events.
+- `ai_button`: applies the BOOT/AI startup guard and debounces runtime press/release events.
 - `ai_assistant`: owns user-triggered interaction state, deadlines, cancellation, request IDs, and the public snapshot.
 - `cloud_worker`: executes one potentially blocking STT, DeepSeek, or TTS request and returns results tagged with request ID; it does not own state.
 - `wifi_service`: keeps Wi-Fi connected while AI is enabled and publishes connection state without blocking boot.
@@ -31,7 +31,7 @@ The later implementation should keep these responsibilities separate:
 
 The intended flow is:
 
-1. User presses the dedicated AI button.
+1. User presses the armed BOOT/AI button.
 2. `BikeMbAiAssistant_OnButtonPressed()` stops music if necessary and requests microphone ownership.
 3. `audio_session` records 16 kHz, 16-bit, mono PCM into a bounded PSRAM clip.
 4. User releases the button and the clip is submitted to the STT provider over HTTPS.
@@ -42,6 +42,8 @@ The intended flow is:
 Every interaction has a monotonically increasing request ID and one 15-second deadline starting at button release. Cancel invalidates the request ID, aborts network/audio work where possible, and causes late callbacks to be ignored.
 
 A recording shorter than 300 ms is treated as cancel. Pressing the AI button while cloud work, TTS, or music is active invalidates the old request and starts a new recording when Wi-Fi is available. Reaching the 10-second recording limit enters Error and the subsequent release does not submit the clipped audio.
+
+The board input contract is `GPIO0`, active low, with the populated `R27 10 kΩ` pull-up. The input emits no AI events during the first 3000 ms after power-on. After that guard, it must observe a continuous 50 ms released level before arming, then apply 30 ms debounce to runtime edges. Holding BOOT during power-on or reset can still select the ESP32-S3 ROM download mode; firmware cannot mask the strap sampling.
 
 ## Future interfaces
 

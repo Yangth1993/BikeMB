@@ -11,7 +11,8 @@
 
 ## Implementation sequence
 
-- [ ] 核对原理图并上板确认独立 AI 键的 GPIO、有效电平、上下拉和启动安全性。
+- [x] 核对 V2 原理图并记录 `Key1/BOOT = GPIO0`、低电平有效、板载 `10 kΩ` 上拉和 ROM 下载模式风险。
+- [ ] 上板确认 3000 ms 启动保护、50 ms 释放解锁、30 ms 消抖和按住 BOOT 复位后的恢复行为。
 - [ ] Add host-testable `BikeMbAiState` reducer with request ID, cancel, and timeout tests.
 - [ ] Add tracked non-secret AI config and ignored `ai_secrets.local.h` template workflow.
 - [ ] Add `AiButton` input events using a board-configured GPIO and debounce tests.

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Define a future experimental AI assistant capability for BikeMB. The device should use Wi-Fi to talk directly to cloud STT, DeepSeek, and TTS services, start recording only while the user holds a dedicated physical button, answer through the onboard speaker, and support configured cloud audio streams.
+Define a future experimental AI assistant capability for BikeMB. The device should use Wi-Fi to talk directly to cloud STT, DeepSeek, and TTS services, start recording only while the user holds the reused BOOT/AI button after its startup guard, answer through the onboard speaker, and support configured cloud audio streams.
 
 This change is documentation-only. It does not implement firmware code.
 
@@ -14,7 +14,7 @@ This change is documentation-only. It does not implement firmware code.
 - Use device-direct cloud access for AI requests and cloud music streams.
 - Use DeepSeek as the V1 default LLM behind a replaceable provider interface.
 - Keep STT and TTS behind independent replaceable provider interfaces; use Alibaba Cloud Model Studio speech APIs as the initial implementation target.
-- Require a dedicated physical AI button and hold-to-talk behavior before recording.
+- Reuse the board BOOT key as the physical AI button after a 3-second startup guard and require hold-to-talk behavior before recording.
 - Provide a light status indicator on the dashboard and a dedicated AI page for detailed status and controls.
 - Separate stream playback from future music catalog resolution so point-song support can be added later.
 - Define safe fallback behavior when Wi-Fi, AI service, speech conversion, or stream playback fails.
@@ -38,3 +38,4 @@ This change is documentation-only. It does not implement firmware code.
 - The current audio input and output paths share I2S and codec resources, so later implementation needs explicit audio session ownership.
 - Candidate all-in-one Arduino audio libraries use their own I2S lifecycle and may impose GPL-3.0 obligations, so decoder selection needs a separate implementation spike.
 - Network or provider failures must not block speed display, battery display, page switching, or other core ride UI behavior.
+- GPIO0 remains a ROM download-mode strap; holding BOOT during power-on or reset can prevent normal application startup even though application-level AI events are delayed.

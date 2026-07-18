@@ -8,7 +8,7 @@
 
 ## Context
 
-BikeMB 需要在 ESP32-S3R8、16 MB Flash、8 MB PSRAM 和现有 Arduino + LVGL 固件上增加默认关闭的 AI 助手实验能力。V1 包含独立实体键按住说话、云端 STT、DeepSeek 问答、云端 TTS、语音回复和云音频流播放。
+BikeMB 需要在 ESP32-S3R8、16 MB Flash、8 MB PSRAM 和现有 Arduino + LVGL 固件上增加默认关闭的 AI 助手实验能力。V1 包含实体键按住说话、云端 STT、DeepSeek 问答、云端 TTS、语音回复和云音频流播放。实体键的板级实现由 ADR-0003 进一步固定为复用 BOOT/GPIO0。
 
 当前 ES7210 麦克风、ES8311 喇叭和 I2S0 已分别在音频自检、档位提示和直接语音命令环境中验证，但这些模块各自创建 I2S owner，不能作为生产 AI 链路同时运行。云端能力也不得阻塞 LVGL 或成为核心码表依赖。
 
