@@ -34,6 +34,14 @@ namespace {
 uint32_t g_lastTickMs = 0;
 constexpr const char *TAG = "BikeMB.Main";
 
+void LogRoutedCommand(const char *message) {
+#if defined(BIKE_MB_USE_ESPIDF_RUNTIME)
+  ESP_LOGI(TAG, "%s", message);
+#else
+  Serial.println(message);
+#endif
+}
+
 void HandleModeChanged(uint8_t modeIndex) {
 #if BIKE_MB_ENABLE_AUDIO_PROMPTS
   BikeMbAudioPrompts_PlayMode(static_cast<BikeMbAudioPromptMode>(modeIndex));
@@ -45,11 +53,11 @@ void HandleModeChanged(uint8_t modeIndex) {
 void HandleAudioSelfTestCommand() {
   const BikeMbAudioSelfTestCommand command = BikeMbAudioSelfTest_ConsumeCommand();
   if (command == BIKE_MB_AUDIO_SELF_TEST_COMMAND_NEXT_PAGE) {
-    Serial.println("[BikeMB][audio] routed command: next page");
+    LogRoutedCommand("[BikeMB][audio] routed command: next page");
     DashboardApp_NextPage();
     BikeMbAudioSelfTest_PlayPageTone(true);
   } else if (command == BIKE_MB_AUDIO_SELF_TEST_COMMAND_PREVIOUS_PAGE) {
-    Serial.println("[BikeMB][audio] routed command: previous page");
+    LogRoutedCommand("[BikeMB][audio] routed command: previous page");
     DashboardApp_PreviousPage();
     BikeMbAudioSelfTest_PlayPageTone(false);
   }
@@ -58,10 +66,10 @@ void HandleAudioSelfTestCommand() {
 void HandleVoiceCommand() {
   const BikeMbVoiceCommand command = BikeMbVoiceCommands_ConsumeCommand();
   if (command == BIKE_MB_VOICE_COMMAND_NEXT_PAGE) {
-    Serial.println("[BikeMB][voice] routed command: next page");
+    LogRoutedCommand("[BikeMB][voice] routed command: next page");
     DashboardApp_NextPage();
   } else if (command == BIKE_MB_VOICE_COMMAND_PREVIOUS_PAGE) {
-    Serial.println("[BikeMB][voice] routed command: previous page");
+    LogRoutedCommand("[BikeMB][voice] routed command: previous page");
     DashboardApp_PreviousPage();
   }
 }

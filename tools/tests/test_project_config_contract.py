@@ -119,6 +119,7 @@ def test_espidf_sdkconfig_defaults_match_board_and_dashboard() -> None:
         "CONFIG_LV_FONT_MONTSERRAT_18=y",
         "CONFIG_LV_FONT_MONTSERRAT_22=y",
         "CONFIG_LV_FONT_MONTSERRAT_28=y",
+        "CONFIG_LV_FONT_MONTSERRAT_48=y",
     ]
     for token in required_tokens:
         check(token in defaults, f"sdkconfig.defaults must keep {token}.")

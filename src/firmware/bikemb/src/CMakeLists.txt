@@ -1,4 +1,7 @@
 set(BIKEMB_SRCS
+    ai/ai_assistant.cpp
+    ai/ai_state_machine.cpp
+    ai/cloud_worker.cpp
     app/dashboard_app.cpp
     app/assets/dashboard_font_speed_140.c
     app/assets/dashboard_font_speed_decimal_96.c
@@ -19,6 +22,8 @@ set(BIKEMB_SRCS
     drivers/TCA9554PWR.cpp
     drivers/Touch_CST816.cpp
     drivers/esp_lcd_st77916.c
+    input/ai_button.cpp
+    input/ai_button_logic.cpp
     main.cpp
     platform/board_support.cpp
     platform/lvgl_port.cpp

@@ -63,7 +63,27 @@ def test_native_ai_reducers():
     )
 
 
+def test_runtime_ownership_contract():
+    assistant = read_text(FIRMWARE_ROOT / "src" / "ai" / "ai_assistant.cpp")
+    worker = read_text(FIRMWARE_ROOT / "src" / "ai" / "cloud_worker.cpp")
+    button = read_text(FIRMWARE_ROOT / "src" / "input" / "ai_button.cpp")
+    header = read_text(FIRMWARE_ROOT / "src" / "ai" / "ai_assistant.h")
+
+    assert '"bikemb_ai"' in assistant
+    assert '"bikemb_cloud"' in worker
+    assert "xQueueSend" in assistant
+    assert "BikeMbAiStateMachine_Dispatch" in assistant
+    assert "requestId" in worker
+    assert "lv_" not in assistant
+    assert "lv_" not in worker
+    assert "GPIO0" not in button
+    assert "BikeMbAiConfig::kButtonGpio" in button
+    assert "BikeMbAiAssistant_GetSnapshot" in header
+    assert "BikeMbAiAssistant_Cancel" in header
+
+
 if __name__ == "__main__":
     test_configuration_contract()
     test_native_ai_reducers()
+    test_runtime_ownership_contract()
     print("PASS test_ai_framework")
