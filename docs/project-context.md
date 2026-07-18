@@ -27,7 +27,7 @@ BikeMB 是一个基于 Waveshare `ESP32-S3-Touch-LCD-1.85C V2` 的自行车码�
 
 本地参考资料目录：
 
-- `ESP32_Datas/`
+- `refs_files/ESP32_Datas/`
 
 该目录只作为离线资料，不纳入 Git 版本管理。
 
@@ -39,7 +39,7 @@ BikeMB 是一个基于 Waveshare `ESP32-S3-Touch-LCD-1.85C V2` 的自行车码�
 
 - `docs/`
 - `openspec/`
-- `firmware/bringup/`
+- `src/firmware/bringup/`
 - `tools/`
 
 ### 2. OpenSpec 文档基础
@@ -63,7 +63,7 @@ BikeMB 是一个基于 Waveshare `ESP32-S3-Touch-LCD-1.85C V2` 的自行车码�
 
 ### 4. Bring-up 工程验证
 
-`firmware/bringup` 已验证：
+`src/firmware/bringup` 已验证：
 
 - PlatformIO Core 可用
 - 串口烧录可用
@@ -105,8 +105,8 @@ Bring-up 使用的关键配置：
 
 当前正式方向是：
 
-- 保留 `firmware/bringup` 作为硬件验证入口
-- 新建 `firmware/bikemb` 作为正式 demo 基线工程
+- 保留 `src/firmware/bringup` 作为硬件验证入口
+- 新建 `src/firmware/bikemb` 作为正式 demo 基线工程
 - 复用已验证的底层 LCD / I2C / EXIO / 背光驱动
 - 在 `bikemb` 中接入 `LVGL`
 - 第一版页面尽量复刻当前 dashboard 的观感和信息结构
@@ -124,7 +124,7 @@ Bring-up 使用的关键配置：
 下一阶段按这个顺序推进：
 
 1. 修复仓库中文文档编码并统一内容
-2. 初始化 `firmware/bikemb`
+2. 初始化 `src/firmware/bikemb`
 3. 跑通 `LVGL` 显示链路
 4. 复刻当前 dashboard 页面
 5. 再逐步接入真实传感器与业务数据

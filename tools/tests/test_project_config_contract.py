@@ -3,8 +3,8 @@ import configparser
 from contract_helpers import check, read_repo_text
 
 
-PLATFORMIO_INI = "firmware/bikemb/platformio.ini"
-SDKCONFIG_DEFAULTS = "firmware/bikemb/sdkconfig.defaults"
+PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
+SDKCONFIG_DEFAULTS = "src/firmware/bikemb/sdkconfig.defaults"
 ENV_NAME = "esp32-s3-touch-lcd-1-85c"
 ENV_SECTION = f"env:{ENV_NAME}"
 IDF_ENV_NAME = "esp32-s3-touch-lcd-1-85c-idf"
@@ -23,7 +23,7 @@ def test_platformio_target_env_and_board_stay_fixed() -> None:
 
     check(config.has_section("platformio"), "platformio.ini must keep a [platformio] section.")
     check(
-        config.get("platformio", "core_dir", fallback="") == "../../.pio-home",
+        config.get("platformio", "core_dir", fallback="") == "../../../.pio-home",
         "PlatformIO core_dir should stay inside the repo-local ignored .pio-home cache.",
     )
     check(

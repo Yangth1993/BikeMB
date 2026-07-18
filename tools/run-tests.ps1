@@ -7,6 +7,8 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $TestRoot = Join-Path $RepoRoot "tools\tests"
 $env:PYTHONDONTWRITEBYTECODE = "1"
+$env:PLATFORMIO_CORE_DIR = Join-Path $RepoRoot ".pio-home"
+$env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = "No"
 
 if (Get-Command py -ErrorAction SilentlyContinue) {
   $PythonExe = "py"
@@ -38,7 +40,7 @@ foreach ($Test in $Tests) {
 
 if ($SmokeBuild) {
   Write-Host "[RUN ] platformio run smoke build"
-  $FirmwareRoot = Join-Path $RepoRoot "firmware\bikemb"
+  $FirmwareRoot = Join-Path $RepoRoot "src\firmware\bikemb"
   Push-Location $FirmwareRoot
   try {
     & $PythonExe @PythonArgs -m platformio run

@@ -3,12 +3,12 @@ from pathlib import Path
 from contract_helpers import REPO_ROOT, check, read_repo_text
 
 
-MAIN = "firmware/bikemb/src/main.cpp"
-RUNTIME_HEADER = "firmware/bikemb/src/runtime/bike_runtime.h"
-RUNTIME_SOURCE = "firmware/bikemb/src/runtime/bike_runtime.cpp"
-EVENT_HEADER = "firmware/bikemb/src/runtime/bike_event.h"
-UI_SERVICE = "firmware/bikemb/src/services/ui_service.cpp"
-METRICS_SERVICE = "firmware/bikemb/src/services/metrics_service.cpp"
+MAIN = "src/firmware/bikemb/src/main.cpp"
+RUNTIME_HEADER = "src/firmware/bikemb/src/runtime/bike_runtime.h"
+RUNTIME_SOURCE = "src/firmware/bikemb/src/runtime/bike_runtime.cpp"
+EVENT_HEADER = "src/firmware/bikemb/src/runtime/bike_event.h"
+UI_SERVICE = "src/firmware/bikemb/src/services/ui_service.cpp"
+METRICS_SERVICE = "src/firmware/bikemb/src/services/metrics_service.cpp"
 
 
 def test_native_espidf_entrypoint_delegates_to_runtime() -> None:
@@ -59,8 +59,8 @@ def test_metrics_service_exists_as_app_service_boundary() -> None:
 
 
 def test_no_runtime_source_uses_arduino_header() -> None:
-    runtime_root = REPO_ROOT / "firmware" / "bikemb" / "src" / "runtime"
-    service_root = REPO_ROOT / "firmware" / "bikemb" / "src" / "services"
+    runtime_root = REPO_ROOT / "src" / "firmware" / "bikemb" / "src" / "runtime"
+    service_root = REPO_ROOT / "src" / "firmware" / "bikemb" / "src" / "services"
     sources = list(runtime_root.glob("*.cpp")) + list(runtime_root.glob("*.h")) + list(service_root.glob("*.cpp")) + list(service_root.glob("*.h"))
 
     check(sources, "Runtime/service source files must exist.")

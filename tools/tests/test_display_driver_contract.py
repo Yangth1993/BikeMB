@@ -1,9 +1,9 @@
 from contract_helpers import check, find_function_body, read_repo_text
 
 
-DISPLAY_DRIVER = "firmware/bikemb/src/drivers/Display_ST77916.cpp"
-DISPLAY_DIAGNOSTICS = "firmware/bikemb/src/app/display_diagnostics.cpp"
-MAIN = "firmware/bikemb/src/main.cpp"
+DISPLAY_DRIVER = "src/firmware/bikemb/src/drivers/Display_ST77916.cpp"
+DISPLAY_DIAGNOSTICS = "src/firmware/bikemb/src/app/display_diagnostics.cpp"
+MAIN = "src/firmware/bikemb/src/main.cpp"
 
 
 def test_lcd_flush_transfer_callback_stays_disabled() -> None:
@@ -42,7 +42,7 @@ def test_lcd_add_window_keeps_rgb565_byte_swap() -> None:
 
 def test_lcd_add_window_collects_perf_stats_without_serial_logging() -> None:
     source = read_repo_text(DISPLAY_DRIVER)
-    header = read_repo_text("firmware/bikemb/src/drivers/Display_ST77916.h")
+    header = read_repo_text("src/firmware/bikemb/src/drivers/Display_ST77916.h")
     body = find_function_body(source, "void LCD_addWindow(")
 
     check("LCD_PerfStats" in header, "LCD driver must expose lightweight performance counters.")

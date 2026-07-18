@@ -1,11 +1,23 @@
 param(
   [string]$Driver = "SDL2",
+  [string]$CapturePath = "",
+  [ValidateRange(0, 2)]
+  [int]$CapturePage = 0,
   [switch]$Build
 )
 
 $ErrorActionPreference = "Stop"
 
 $SimulatorDir = Join-Path $PSScriptRoot "lv_port_pc_vscode"
+$CaptureOutput = $null
+if ($CapturePath) {
+  if ([System.IO.Path]::IsPathRooted($CapturePath)) {
+    $CaptureOutput = [System.IO.Path]::GetFullPath($CapturePath)
+  } else {
+    $CaptureOutput = [System.IO.Path]::GetFullPath((Join-Path (Get-Location).Path $CapturePath))
+  }
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $CaptureOutput) | Out-Null
+}
 
 if (-not (Test-Path $SimulatorDir)) {
   Write-Error "LVGL simulator is missing. Run tools\setup-lvgl-simulator.ps1 first."
@@ -57,7 +69,20 @@ try {
   $App = $Executables[0].FullName
   Write-Host "Opening LVGL simulator:"
   Write-Host "  $App"
-  Start-Process -FilePath $App
+  $PreviousCapturePath = [Environment]::GetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PATH", "Process")
+  $PreviousCapturePage = [Environment]::GetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PAGE", "Process")
+  try {
+    if ($CaptureOutput) {
+      [Environment]::SetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PATH", $CaptureOutput, "Process")
+      [Environment]::SetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PAGE", $CapturePage.ToString(), "Process")
+      Write-Host "Visual QA capture:"
+      Write-Host "  $CaptureOutput"
+    }
+    Start-Process -FilePath $App
+  } finally {
+    [Environment]::SetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PATH", $PreviousCapturePath, "Process")
+    [Environment]::SetEnvironmentVariable("BIKEMB_SIMULATOR_CAPTURE_PAGE", $PreviousCapturePage, "Process")
+  }
 } finally {
   Pop-Location
 }

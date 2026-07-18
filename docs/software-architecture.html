@@ -310,6 +310,73 @@
       margin: 0;
     }
 
+    .partition-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, .72fr) minmax(0, 1.28fr);
+      gap: 14px;
+      align-items: start;
+      margin-top: 14px;
+    }
+
+    .partition-stack {
+      display: grid;
+      gap: 4px;
+      padding: 14px;
+      border: 1px solid rgba(45, 226, 208, .2);
+      border-radius: 18px;
+      background: rgba(4, 12, 11, .54);
+    }
+
+    .partition-stack h3 {
+      margin: 0 0 10px;
+      color: var(--cyan);
+      font-size: 17px;
+    }
+
+    .partition-block {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      min-height: var(--h);
+      padding: 8px 10px;
+      border: 1px solid rgba(244, 234, 215, .11);
+      border-radius: 12px;
+      background: linear-gradient(90deg, rgba(45, 226, 208, .12), rgba(200, 243, 93, .05));
+    }
+
+    .partition-block.app {
+      background: linear-gradient(90deg, rgba(200, 243, 93, .18), rgba(200, 243, 93, .05));
+    }
+
+    .partition-block.fs {
+      background: linear-gradient(90deg, rgba(240, 174, 73, .18), rgba(240, 174, 73, .05));
+    }
+
+    .partition-block.model {
+      background: linear-gradient(90deg, rgba(255, 111, 97, .2), rgba(255, 111, 97, .05));
+    }
+
+    .partition-addr {
+      color: var(--lime);
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .partition-name {
+      display: block;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .partition-note {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .flow {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -456,7 +523,7 @@
         border-radius: 22px;
       }
 
-      .hero-stats, .grid, .grid.two, .flow, .matrix {
+      .hero-stats, .grid, .grid.two, .flow, .matrix, .partition-layout {
         grid-template-columns: 1fr;
       }
 
@@ -499,7 +566,7 @@
 
     <main>
       <header class="hero" id="top">
-        <span class="eyebrow">Firmware map for firmware/bikemb</span>
+        <span class="eyebrow">Firmware map for src/firmware/bikemb</span>
         <h2>BikeMB 当前固件框架说明</h2>
         <p>这份 HTML 用来快速查代码路径：页面从哪里创建、档位播报怎么触发、语音识别如何进入翻页命令、ESP-SR 模型分区如何烧录。</p>
         <div class="hero-stats">
@@ -647,7 +714,7 @@
           <tr><td><code>kBikeMbPromptBoostPcm</code></td><td>“增强模式”的 PCM 数据。</td></tr>
         </table>
         <div class="callout good">播放时序：UI 点击档位后立即更新页面；<code>HandleModeChanged</code> 调用 <code>BikeMbAudioPrompts_PlayMode</code>；播放请求写入 <code>g_requestedMode</code> / <code>g_requestSerial</code> 后通过 <code>xTaskNotify(..., eSetValueWithOverwrite)</code> 唤醒后台 task。连续点击时旧语音会被新请求打断。</div>
-        <div class="callout good">语音资产生成：运行 <code>tools/generate-mode-prompts.ps1</code>，默认读取 <code>generated_audio/eco.mp3</code>、<code>generated_audio/trail.mp3</code>、<code>generated_audio/boost.mp3</code>，转成 <code>16-bit mono PCM, 16000 Hz</code> 后写入 <code>audio_prompt_assets.cpp</code>。默认固件不会带入大语音数组。</div>
+        <div class="callout good">语音资产生成：运行 <code>tools/generate-mode-prompts.ps1</code>，默认读取 <code>src/assets/audio/mode-prompts/eco.mp3</code>、<code>src/assets/audio/mode-prompts/trail.mp3</code>、<code>src/assets/audio/mode-prompts/boost.mp3</code>，转成 <code>16-bit mono PCM, 16000 Hz</code> 后写入 <code>audio_prompt_assets.cpp</code>。默认固件不会带入大语音数组。</div>
       </section>
 
       <section id="voice">
@@ -682,7 +749,7 @@
           <tr><td><code>esp32-s3-touch-lcd-1-85c</code></td><td>Arduino</td><td>默认 LVGL dashboard 固件。</td><td>不打开音频/语音开关。</td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-audio-self-test</code></td><td>Arduino</td><td>音频输入/输出硬件验证。</td><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST=1</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-mode-prompts-test</code></td><td>Arduino</td><td>点击档位后播放预录语音。</td><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS=1</code></td></tr>
-          <tr><td><code>esp32-s3-touch-lcd-1-85c-voice-direct-test</code></td><td>Arduino</td><td>ESP-SR 直接识别翻页。</td><td><code>board_build.partitions = esp_sr_16.csv</code><br><code>BIKE_MB_ENABLE_VOICE_COMMANDS=1</code><br><code>extra_scripts = pre:../../tools/pio_upload_srmodels.py</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-voice-direct-test</code></td><td>Arduino</td><td>ESP-SR 直接识别翻页。</td><td><code>board_build.partitions = esp_sr_16.csv</code><br><code>BIKE_MB_ENABLE_VOICE_COMMANDS=1</code><br><code>extra_scripts = pre:../../../tools/pio_upload_srmodels.py</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF</td><td>Runtime/Event/Service 迁移构建。</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME=1</code></td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
@@ -694,6 +761,52 @@
             <h3>ESP-SR 分区</h3>
             <p><code>voice-direct-test</code> 使用 framework 提供的 <code>esp_sr_16.csv</code>。模型文件 <code>srmodels.bin</code> 通过脚本追加烧录到 <code>0xC10000</code>。</p>
           </article>
+        </div>
+        <div class="partition-layout">
+          <div class="partition-stack">
+            <h3>默认 / 音频播报环境</h3>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x000000</span><span><span class="partition-name">ROM / reserved</span><span class="partition-note">芯片固定启动区域，不由应用直接写入。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x001000</span><span><span class="partition-name">Bootloader</span><span class="partition-note">二级启动加载器，读取分区表并启动 app。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">记录各分区名称、类型、偏移和大小。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、累计里程等小型 KV 数据。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
+            <div class="partition-block app" style="--h:98px"><span class="partition-addr">0x010000<br>6.25MB</span><span><span class="partition-name">app0 / ota_0</span><span class="partition-note">当前或候选固件 A；默认布局给 LVGL 和音频资源较大空间。</span></span></div>
+            <div class="partition-block app" style="--h:98px"><span class="partition-addr">0x650000<br>6.25MB</span><span><span class="partition-name">app1 / ota_1</span><span class="partition-note">OTA 固件 B，可用于后续升级回滚。</span></span></div>
+            <div class="partition-block fs" style="--h:62px"><span class="partition-addr">0xC90000<br>3.375MB</span><span><span class="partition-name">spiffs</span><span class="partition-note">图片、字体、配置等文件资源预留区。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0xFF0000<br>64KB</span><span><span class="partition-name">coredump</span><span class="partition-note">异常崩溃转储。</span></span></div>
+          </div>
+          <table>
+            <tr><th>区域</th><th>简要说明</th></tr>
+            <tr><td>Bootloader / Partition Table</td><td>启动链路基础设施。通常不在应用逻辑中直接操作。</td></tr>
+            <tr><td><code>nvs</code></td><td>适合保存少量持久化数据，例如用户设置、传感器校准、累计里程。</td></tr>
+            <tr><td><code>otadata</code></td><td>保存 OTA 选择状态，让 bootloader 知道启动哪个 app 槽。</td></tr>
+            <tr><td><code>app0/app1</code></td><td>两个应用槽。默认布局每个约 6.25MB，比较适合当前 UI + 音频资源验证。</td></tr>
+            <tr><td><code>spiffs</code></td><td>文件系统区域。后续如果字体/图片不想编译进固件，可以放这里。</td></tr>
+            <tr><td><code>coredump</code></td><td>保存崩溃信息，辅助排查死机、异常重启。</td></tr>
+          </table>
+        </div>
+        <div class="partition-layout">
+          <div class="partition-stack">
+            <h3>ESP-SR voice-direct-test</h3>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x000000</span><span><span class="partition-name">ROM / reserved</span><span class="partition-note">芯片固定启动区域，不由应用直接写入。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x001000</span><span><span class="partition-name">Bootloader</span><span class="partition-note">二级启动加载器。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">来自 <code>esp_sr_16.csv</code>，为模型分区留出固定位置。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、用户偏好。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
+            <div class="partition-block app" style="--h:58px"><span class="partition-addr">0x010000<br>3MB</span><span><span class="partition-name">app0 / ota_0</span><span class="partition-note">语音识别测试固件 A。</span></span></div>
+            <div class="partition-block app" style="--h:58px"><span class="partition-addr">0x310000<br>3MB</span><span><span class="partition-name">app1 / ota_1</span><span class="partition-note">语音识别测试固件 B。</span></span></div>
+            <div class="partition-block fs" style="--h:92px"><span class="partition-addr">0x610000<br>6MB</span><span><span class="partition-name">spiffs</span><span class="partition-note">文件系统资源空间。</span></span></div>
+            <div class="partition-block model" style="--h:72px"><span class="partition-addr">0xC10000<br>3.875MB</span><span><span class="partition-name">model / srmodels.bin</span><span class="partition-note">ESP-SR 语音模型，由烧录脚本作为 extra image 写入。</span></span></div>
+            <div class="partition-block" style="--h:34px"><span class="partition-addr">0xFF0000<br>64KB</span><span><span class="partition-name">coredump</span><span class="partition-note">异常崩溃转储。</span></span></div>
+          </div>
+          <table>
+            <tr><th>区域</th><th>简要说明</th></tr>
+            <tr><td><code>app0/app1</code></td><td>每个只有 3MB。相比默认布局缩小，是为了给 ESP-SR 模型分区腾出空间。</td></tr>
+            <tr><td><code>spiffs</code></td><td>ESP-SR 布局保留 6MB 文件系统区；当前语音命令验证暂未重点使用它。</td></tr>
+            <tr><td><code>model</code></td><td>放 <code>srmodels.bin</code>。当前脚本固定烧录到 <code>0xC10000</code>，必须和 <code>esp_sr_16.csv</code> 匹配。</td></tr>
+            <tr><td><code>nvs/otadata/coredump</code></td><td>用途和默认布局一致，分别用于持久化小数据、OTA 状态和崩溃转储。</td></tr>
+            <tr><td>主要风险</td><td>语音识别固件 app 空间更小；如果后续同时加入大量 UI、音频资源和 ESP-SR，需要关注固件大小。</td></tr>
+          </table>
         </div>
         <pre><code>srmodels = framework_libs / "esp32s3" / "esp_sr" / "srmodels.bin"
 env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>

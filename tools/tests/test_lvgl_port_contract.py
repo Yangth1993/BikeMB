@@ -3,7 +3,7 @@ import re
 from contract_helpers import check, find_function_body, read_repo_text
 
 
-LVGL_PORT = "firmware/bikemb/src/platform/lvgl_port.cpp"
+LVGL_PORT = "src/firmware/bikemb/src/platform/lvgl_port.cpp"
 
 
 def test_display_driver_has_static_lifetime() -> None:
@@ -61,7 +61,7 @@ def test_flush_callback_stays_synchronous_and_simple() -> None:
 
 def test_lvgl_flush_metrics_are_collected_without_async_flush() -> None:
     source = read_repo_text(LVGL_PORT)
-    header = read_repo_text("firmware/bikemb/src/platform/lvgl_port.h")
+    header = read_repo_text("src/firmware/bikemb/src/platform/lvgl_port.h")
     flush_body = find_function_body(source, "void FlushCallback(")
     run_body = find_function_body(source, "uint32_t LvglPort_Run(")
 

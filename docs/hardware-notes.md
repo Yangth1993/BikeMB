@@ -12,7 +12,7 @@
 - PSRAM：`8 MB`
 - USB：`USB Type-C`
 - USB D- / D+：`GPIO19 / GPIO20`
-- 本地资料目录：`D:\MyProject\BikeMB\ESP32_Datas`
+- 本地资料目录：`D:\MyProject\BikeMB\refs_files\ESP32_Datas`
 
 ## 屏幕
 

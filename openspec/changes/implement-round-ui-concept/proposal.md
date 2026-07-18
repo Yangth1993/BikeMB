@@ -2,7 +2,7 @@
 
 ## Goal
 
-Implement the approved three-page round display concept in `firmware/bikemb` using native LVGL widgets.
+Implement the approved three-page round display concept in `src/firmware/bikemb` using native LVGL widgets.
 
 ## Scope
 

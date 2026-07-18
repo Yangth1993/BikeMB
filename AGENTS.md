@@ -57,7 +57,7 @@
 - 优先使用 `rg` 或定向搜索，避免打开大文件。
 - 只读取完成任务所需的片段。
 - 除非明确必要或用户要求，不检查：
-  - `ESP32_Datas/`
+  - `refs_files/ESP32_Datas/`
   - `.pio/`
   - 构建输出目录
   - 生成代码
@@ -103,7 +103,7 @@
   - 已知风险/阻塞
 - 如果代码有变化，提交前运行最小相关测试。
 - 提交所有有意的项目变更。
-- 不提交被忽略的本地产物，例如 `.pio/`、`tools/lv_port_pc_vscode/`、`.vscode/`、`TrueDebug/`、`ESP32_Datas/`。
+- 不提交被忽略的本地产物，例如 `.pio/`、`tools/lv_port_pc_vscode/`、`.vscode/`、`TrueDebug/`、`refs_files/ESP32_Datas/`。
 - 最终回复应提醒用户重启后下一步做什么。
 - 交接内容应足够简洁，能在一分钟内读完。
 

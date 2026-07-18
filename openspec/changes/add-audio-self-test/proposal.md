@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a disabled-by-default audio self-test path in the existing `firmware/bikemb` project so the Waveshare audio input/output chain can be verified before adding speech recognition.
+Add a disabled-by-default audio self-test path in the existing `src/firmware/bikemb` project so the Waveshare audio input/output chain can be verified before adding speech recognition.
 
 ## Scope
 

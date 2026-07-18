@@ -1,13 +1,13 @@
 # BikeMB 固件架构说明
 
-本文是 `firmware/bikemb` 的当前代码地图。目标不是解释概念，而是让你能快速找到“某个功能在哪个文件、哪个函数里实现”。
+本文是 `src/firmware/bikemb` 的当前代码地图。目标不是解释概念，而是让你能快速找到“某个功能在哪个文件、哪个函数里实现”。
 
 ## 当前运行路径
 
 当前工程保留两条运行路径：
 
-- 默认路径：`PlatformIO + Arduino`，入口在 [main.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/main.cpp)，使用 `setup()` / `loop()`。
-- 迁移路径：`PlatformIO + ESP-IDF`，入口也在 [main.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/main.cpp)，使用 `app_main()`。
+- 默认路径：`PlatformIO + Arduino`，入口在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `setup()` / `loop()`。
+- 迁移路径：`PlatformIO + ESP-IDF`，入口也在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `app_main()`。
 
 目前已经上板验证的 UI、触摸、音频自检、档位播报、直接语音识别，都在 Arduino 路径上。ESP-IDF 路径已经有 Runtime/Event/Service 骨架，但音频和语音还没有迁过去。
 
@@ -79,7 +79,7 @@ flowchart TB
 
 ## Arduino 主循环框架
 
-文件：[main.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/main.cpp)
+文件：[main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)
 
 ### 编译开关
 
@@ -126,7 +126,7 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 ### App 层
 
-文件：[dashboard_app.h](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_app.h)
+文件：[dashboard_app.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_app.h)
 
 | 函数 | 调用方 | 作用 |
 | --- | --- | --- |
@@ -139,7 +139,7 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 ### View Core 层
 
-文件：[dashboard_view_core.h](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_view_core.h)
+文件：[dashboard_view_core.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_view_core.h)
 
 | 函数/类型 | 作用 |
 | --- | --- |
@@ -155,10 +155,10 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 文件：
 
-- [dashboard_pages.c](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_pages.c)
-- [dashboard_pages.h](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_pages.h)
-- [dashboard_ui_style.c](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_ui_style.c)
-- [dashboard_ui_style.h](/D:/MyProject/BikeMB/firmware/bikemb/src/app/dashboard_ui_style.h)
+- [dashboard_pages.c](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_pages.c)
+- [dashboard_pages.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_pages.h)
+- [dashboard_ui_style.c](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_ui_style.c)
+- [dashboard_ui_style.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/app/dashboard_ui_style.h)
 
 | 函数 | 作用 |
 | --- | --- |
@@ -197,8 +197,8 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 文件：
 
-- [audio_self_test.h](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_self_test.h)
-- [audio_self_test.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_self_test.cpp)
+- [audio_self_test.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_self_test.h)
+- [audio_self_test.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_self_test.cpp)
 
 开启方式：`BIKE_MB_ENABLE_AUDIO_SELF_TEST=1`
 
@@ -225,10 +225,10 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 文件：
 
-- [audio_prompts.h](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_prompts.h)
-- [audio_prompts.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_prompts.cpp)
-- [audio_prompt_assets.h](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_prompt_assets.h)
-- [audio_prompt_assets.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/audio/audio_prompt_assets.cpp)
+- [audio_prompts.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_prompts.h)
+- [audio_prompts.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_prompts.cpp)
+- [audio_prompt_assets.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_prompt_assets.h)
+- [audio_prompt_assets.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/audio/audio_prompt_assets.cpp)
 - [generate-mode-prompts.ps1](/D:/MyProject/BikeMB/tools/generate-mode-prompts.ps1)
 
 开启方式：`BIKE_MB_ENABLE_AUDIO_PROMPTS=1`
@@ -264,8 +264,8 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 语音资产生成流程：
 
 1. 运行 `powershell -ExecutionPolicy Bypass -File tools\generate-mode-prompts.ps1`。
-2. 脚本默认读取 `generated_audio/eco.mp3`、`generated_audio/trail.mp3`、`generated_audio/boost.mp3`。
-3. Windows Media Transcoder 先把源音频转为临时 WAV，输出到 `build/generated-prompts`。
+2. 脚本默认读取 `src/assets/audio/mode-prompts/eco.mp3`、`src/assets/audio/mode-prompts/trail.mp3`、`src/assets/audio/mode-prompts/boost.mp3`。
+3. Windows Media Transcoder 先把源音频转为临时 WAV，输出到 `src/build/generated-prompts`。
 4. 脚本再下混/重采样为 `16-bit mono PCM, 16000 Hz`。
 5. 脚本把 PCM 转成 `audio_prompt_assets.cpp` 里的 C 数组。
 6. `audio_prompt_assets.cpp` 本身也受 `BIKE_MB_ENABLE_AUDIO_PROMPTS` 保护，所以默认固件不会带入大语音数组。
@@ -276,8 +276,8 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 文件：
 
-- [voice_commands.h](/D:/MyProject/BikeMB/firmware/bikemb/src/voice/voice_commands.h)
-- [voice_commands.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/voice/voice_commands.cpp)
+- [voice_commands.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/voice/voice_commands.h)
+- [voice_commands.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/voice/voice_commands.cpp)
 - [pio_upload_srmodels.py](/D:/MyProject/BikeMB/tools/pio_upload_srmodels.py)
 
 开启方式：`BIKE_MB_ENABLE_VOICE_COMMANDS=1`
@@ -332,7 +332,7 @@ sequenceDiagram
 
 ## 固件分区和构建环境框架
 
-文件：[platformio.ini](/D:/MyProject/BikeMB/firmware/bikemb/platformio.ini)
+文件：[platformio.ini](/D:/MyProject/BikeMB/src/firmware/bikemb/platformio.ini)
 
 ### PlatformIO 环境
 
@@ -341,16 +341,80 @@ sequenceDiagram
 | `esp32-s3-touch-lcd-1-85c` | Arduino | 默认 LVGL dashboard 固件。 | 不打开音频/语音开关。 |
 | `esp32-s3-touch-lcd-1-85c-audio-self-test` | Arduino | 音频输入/输出硬件验证。 | `BIKE_MB_ENABLE_AUDIO_SELF_TEST=1` |
 | `esp32-s3-touch-lcd-1-85c-mode-prompts-test` | Arduino | 点击档位后播放预录语音。 | `BIKE_MB_ENABLE_AUDIO_PROMPTS=1` |
-| `esp32-s3-touch-lcd-1-85c-voice-direct-test` | Arduino | ESP-SR 直接识别上一页/下一页。 | `board_build.partitions = esp_sr_16.csv`，`BIKE_MB_ENABLE_VOICE_COMMANDS=1`，`extra_scripts = pre:../../tools/pio_upload_srmodels.py` |
+| `esp32-s3-touch-lcd-1-85c-voice-direct-test` | Arduino | ESP-SR 直接识别上一页/下一页。 | `board_build.partitions = esp_sr_16.csv`，`BIKE_MB_ENABLE_VOICE_COMMANDS=1`，`extra_scripts = pre:../../../tools/pio_upload_srmodels.py` |
 | `esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF | Runtime/Event/Service 迁移构建。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1` |
 
 ### 默认分区
 
 默认 Arduino 环境没有在仓库里指定自定义分区 CSV。它使用 board/framework 默认分区布局。这是当前稳定 LVGL 固件路径。
 
+竖向内存图：
+
+```mermaid
+flowchart TB
+  subgraph DEFAULT_FLASH["默认 / 音频播报环境 Flash 16MB"]
+    D0["0x000000<br/>ROM/reserved<br/>芯片固定启动区域"]
+    D1["0x001000<br/>Bootloader<br/>二级启动加载器"]
+    D2["0x008000<br/>Partition Table<br/>分区表"]
+    D3["0x009000 - 0x00DFFF<br/>nvs 20KB<br/>参数/校准/小型 KV"]
+    D4["0x00E000 - 0x00FFFF<br/>otadata 8KB<br/>OTA 启动选择状态"]
+    D5["0x010000 - 0x64FFFF<br/>app0 / ota_0 6.25MB<br/>当前或候选固件 A"]
+    D6["0x650000 - 0xC8FFFF<br/>app1 / ota_1 6.25MB<br/>OTA 固件 B"]
+    D7["0xC90000 - 0xFEFFFF<br/>spiffs 3.375MB<br/>文件系统资源"]
+    D8["0xFF0000 - 0xFFFFFF<br/>coredump 64KB<br/>崩溃转储"]
+  end
+  D0 --> D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
+```
+
+默认分区说明：
+
+| 区域 | 内容 | BikeMB 当前用途 |
+| --- | --- | --- |
+| ROM/reserved | Flash 起始保留区和芯片启动相关固定区域。 | 不由应用直接写入。 |
+| Bootloader | ESP32 二级启动加载器。 | 负责读取分区表并启动选中的 app。 |
+| Partition Table | 分区表。 | 描述 `nvs`、`app0/app1`、`spiffs` 等区域位置。 |
+| `nvs` | 非易失键值存储。 | 后续可放设置、校准值、累计里程等小数据。 |
+| `otadata` | OTA 状态区。 | 记录当前应从 `app0` 还是 `app1` 启动。 |
+| `app0` / `app1` | 两个 OTA 应用槽。 | 默认/音频播报固件空间较大，适合 LVGL + 语音资源测试。 |
+| `spiffs` | SPI Flash 文件系统。 | 预留给图片、字体、配置等文件资源；当前主要资源仍编译进固件。 |
+| `coredump` | 崩溃转储区。 | 发生异常时可保存崩溃信息，便于定位问题。 |
+
 ### ESP-SR 分区
 
 直接语音识别环境使用 `esp_sr_16.csv`，因为 ESP-SR 需要模型分区。这个 CSV 由 Arduino/ESP32 framework 包提供，不是本仓库自维护文件。
+
+竖向内存图：
+
+```mermaid
+flowchart TB
+  subgraph SR_FLASH["ESP-SR voice-direct-test Flash 16MB"]
+    S0["0x000000<br/>ROM/reserved<br/>芯片固定启动区域"]
+    S1["0x001000<br/>Bootloader<br/>二级启动加载器"]
+    S2["0x008000<br/>Partition Table<br/>ESP-SR 分区表"]
+    S3["0x009000 - 0x00DFFF<br/>nvs 20KB<br/>参数/校准/小型 KV"]
+    S4["0x00E000 - 0x00FFFF<br/>otadata 8KB<br/>OTA 启动选择状态"]
+    S5["0x010000 - 0x30FFFF<br/>app0 / ota_0 3MB<br/>语音识别固件 A"]
+    S6["0x310000 - 0x60FFFF<br/>app1 / ota_1 3MB<br/>语音识别固件 B"]
+    S7["0x610000 - 0xC0FFFF<br/>spiffs 6MB<br/>文件系统资源"]
+    S8["0xC10000 - 0xFEFFFF<br/>model / srmodels.bin 3.875MB<br/>ESP-SR 模型"]
+    S9["0xFF0000 - 0xFFFFFF<br/>coredump 64KB<br/>崩溃转储"]
+  end
+  S0 --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
+```
+
+ESP-SR 分区说明：
+
+| 区域 | 内容 | BikeMB 当前用途 |
+| --- | --- | --- |
+| ROM/reserved | Flash 起始保留区和芯片启动相关固定区域。 | 不由应用直接写入。 |
+| Bootloader | ESP32 二级启动加载器。 | 读取 ESP-SR 分区表并启动选中的语音测试固件。 |
+| Partition Table | `esp_sr_16.csv` 对应的分区表。 | 为 `model` 分区留出固定地址。 |
+| `nvs` | 非易失键值存储。 | 后续可复用为设置、校准值、用户偏好。 |
+| `otadata` | OTA 状态区。 | 管理 `app0/app1` 启动选择。 |
+| `app0` / `app1` | 两个 3MB 应用槽。 | 语音识别环境为了给模型让空间，单个 app 空间比默认分区小。 |
+| `spiffs` | SPI Flash 文件系统。 | ESP-SR 布局里保留 6MB 文件系统空间。 |
+| `model` | ESP-SR 模型镜像分区。 | `pio_upload_srmodels.py` 把 `srmodels.bin` 烧录到 `0xC10000`。 |
+| `coredump` | 崩溃转储区。 | 保存异常转储，便于定位语音/音频任务崩溃。 |
 
 模型文件由 [pio_upload_srmodels.py](/D:/MyProject/BikeMB/tools/pio_upload_srmodels.py) 追加烧录：
 
@@ -373,7 +437,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])
 ```powershell
 $env:PLATFORMIO_CORE_DIR = (Resolve-Path '.pio-home').Path
 $env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
-py -X utf8 -m platformio run -s -d firmware\bikemb
+py -X utf8 -m platformio run -s -d src\firmware\bikemb
 ```
 
 构建档位播报固件：
@@ -381,7 +445,7 @@ py -X utf8 -m platformio run -s -d firmware\bikemb
 ```powershell
 $env:PLATFORMIO_CORE_DIR = (Resolve-Path '.pio-home').Path
 $env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
-py -X utf8 -m platformio run -s -d firmware\bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test
+py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test
 ```
 
 烧录档位播报固件：
@@ -389,7 +453,7 @@ py -X utf8 -m platformio run -s -d firmware\bikemb -e esp32-s3-touch-lcd-1-85c-m
 ```powershell
 $env:PLATFORMIO_CORE_DIR = (Resolve-Path '.pio-home').Path
 $env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
-py -X utf8 -m platformio run -s -d firmware\bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test -t upload
+py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test -t upload
 ```
 
 烧录直接语音识别固件：
@@ -397,17 +461,17 @@ py -X utf8 -m platformio run -s -d firmware\bikemb -e esp32-s3-touch-lcd-1-85c-m
 ```powershell
 $env:PLATFORMIO_CORE_DIR = (Resolve-Path '.pio-home').Path
 $env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
-py -X utf8 -m platformio run -s -d firmware\bikemb -e esp32-s3-touch-lcd-1-85c-voice-direct-test -t upload
+py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-85c-voice-direct-test -t upload
 ```
 
 ## ESP-IDF Runtime 骨架
 
 文件：
 
-- [bike_runtime.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/runtime/bike_runtime.cpp)
-- [bike_event.h](/D:/MyProject/BikeMB/firmware/bikemb/src/runtime/bike_event.h)
-- [ui_service.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/services/ui_service.cpp)
-- [metrics_service.cpp](/D:/MyProject/BikeMB/firmware/bikemb/src/services/metrics_service.cpp)
+- [bike_runtime.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/runtime/bike_runtime.cpp)
+- [bike_event.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/runtime/bike_event.h)
+- [ui_service.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/services/ui_service.cpp)
+- [metrics_service.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/services/metrics_service.cpp)
 
 | 函数 | 作用 |
 | --- | --- |

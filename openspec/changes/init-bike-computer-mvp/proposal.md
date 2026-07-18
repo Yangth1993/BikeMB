@@ -10,7 +10,7 @@ BikeMB 需要先建立一个稳定的最小产品边界，再在此基础上推�
 
 - 建立第一阶段 MVP 的需求边界
 - 固化当前硬件与 bring-up 结论
-- 明确正式工程采用 `firmware/bikemb + LVGL`
+- 明确正式工程采用 `src/firmware/bikemb + LVGL`
 
 ## MVP 范围
 

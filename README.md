@@ -4,10 +4,26 @@ BikeMB 是一个基于 `ESP32-S3` 圆形屏开发板的自行车码表项目。
 
 当前项目目标不是一次性做完完整产品，而是先建立一个稳定、可扩展、可反复上板验证的开发基线，再逐步接入真实骑行数据和更多功能。
 
+## Sources of truth
+
+- 产品需求：docs/product/requirements.md
+- 架构设计：docs/architecture/overview.md
+- 接口定义：docs/architecture/interfaces.md
+- 当前计划：docs/project/current-plan.md
+- 已知问题：docs/project/issues.md
+
+## Working rules
+
+- 修改代码前先阅读相关需求和架构文档。
+- 产品需求发生变化时，更新 docs/product。
+- 架构发生变化时，创建或更新 ADR。
+- 不得在未说明原因的情况下改变公共接口。
+- 完成开发后执行构建和相关测试。
+
 ## 当前状态
 
-- `firmware/bringup`：硬件 bring-up 基线，已经验证串口、背光、屏幕和基础绘制链路
-- `firmware/bikemb`：正式 demo 工程，目标是使用 `LVGL` 复刻当前 dashboard，并作为后续应用开发基座
+- `src/firmware/bringup`：硬件 bring-up 基线，已经验证串口、背光、屏幕和基础绘制链路
+- `src/firmware/bikemb`：正式 demo 工程，目标是使用 `LVGL` 复刻当前 dashboard，并作为后续应用开发基座
 - `openspec/`：使用 OpenSpec 管理需求、设计和变更
 - `docs/`：项目上下文、硬件记录、bring-up 记录和开发辅助说明
 
@@ -32,9 +48,9 @@ BikeMB 是一个基于 `ESP32-S3` 圆形屏开发板的自行车码表项目。
   - `project.md`：项目目标、约束和协作规则
   - `specs/`：已确认的长期需求
   - `changes/`：变更提案、设计和任务清单
-- `firmware/bringup/`
+- `src/firmware/bringup/`
   - 已验证的硬件 bring-up 工程
-- `firmware/bikemb/`
+- `src/firmware/bikemb/`
   - 正式 `LVGL` demo 工程
 - `tools/`
   - 本地串口查看辅助脚本
@@ -52,8 +68,8 @@ BikeMB 是一个基于 `ESP32-S3` 圆形屏开发板的自行车码表项目。
 
 ## 当前软件方向
 
-- 保留 `firmware/bringup` 作为硬件验证基线
-- 使用 `firmware/bikemb` 作为正式 demo 基线工程
+- 保留 `src/firmware/bringup` 作为硬件验证基线
+- 使用 `src/firmware/bikemb` 作为正式 demo 基线工程
 - 使用 `LVGL` 作为正式 UI 绘制层
 - 尽量复刻当前 bring-up dashboard 的观感和指标结构
 - 后续在此基础上替换 demo 数据为真实传感器数据
@@ -61,7 +77,7 @@ BikeMB 是一个基于 `ESP32-S3` 圆形屏开发板的自行车码表项目。
 ## 推荐工作方式
 
 1. 先更新 `openspec/` 文档，明确需求、设计和任务
-2. 在 `firmware/bikemb` 中做最小可运行改动
+2. 在 `src/firmware/bikemb` 中做最小可运行改动
 3. 先完成本地构建，再上板验证
 4. 每次只推进一个稳定的小目标
 5. 及时更新 `docs/project-context.md`

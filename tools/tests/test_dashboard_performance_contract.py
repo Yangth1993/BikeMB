@@ -1,13 +1,13 @@
 from contract_helpers import check, read_repo_text
 
 
-MAIN = "firmware/bikemb/src/main.cpp"
-DASHBOARD_APP = "firmware/bikemb/src/app/dashboard_app.cpp"
-DASHBOARD_VIEW_CORE = "firmware/bikemb/src/app/dashboard_view_core.c"
-DASHBOARD_PAGES = "firmware/bikemb/src/app/dashboard_pages.c"
-DASHBOARD_UI_STYLE = "firmware/bikemb/src/app/dashboard_ui_style.c"
-DEMO_METRICS = "firmware/bikemb/src/app/demo_metrics.cpp"
-LVGL_PORT = "firmware/bikemb/src/platform/lvgl_port.cpp"
+MAIN = "src/firmware/bikemb/src/main.cpp"
+DASHBOARD_APP = "src/firmware/bikemb/src/app/dashboard_app.cpp"
+DASHBOARD_VIEW_CORE = "src/firmware/bikemb/src/app/dashboard_view_core.c"
+DASHBOARD_PAGES = "src/firmware/bikemb/src/app/dashboard_pages.c"
+DASHBOARD_UI_STYLE = "src/firmware/bikemb/src/app/dashboard_ui_style.c"
+DEMO_METRICS = "src/firmware/bikemb/src/app/demo_metrics.cpp"
+LVGL_PORT = "src/firmware/bikemb/src/platform/lvgl_port.cpp"
 
 
 def test_dashboard_uses_stable_cadence_for_synchronous_flush() -> None:

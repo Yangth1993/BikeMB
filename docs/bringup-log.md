@@ -23,7 +23,7 @@
 
 ### Bring-up 工程
 
-- 路径：`firmware/bringup`
+- 路径：`src/firmware/bringup`
 - 显示驱动来源：Waveshare 官方 `Arduino/examples/01_lvgl_example`
 - 当前 UI：未接入 `LVGL`，使用手写 dashboard 做硬件验证
 
@@ -70,5 +70,5 @@
 ### 下一步
 
 1. 修复项目文档编码并统一内容
-2. 新建 `firmware/bikemb`
+2. 新建 `src/firmware/bikemb`
 3. 使用 `LVGL` 复刻当前 dashboard

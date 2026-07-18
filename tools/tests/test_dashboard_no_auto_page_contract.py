@@ -1,10 +1,10 @@
 from contract_helpers import check, read_repo_text
 
 
-DASHBOARD_VIEW = "firmware/bikemb/src/app/dashboard_view.cpp"
-DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
-DEMO_METRICS_HEADER = "firmware/bikemb/src/app/demo_metrics.h"
-DEMO_METRICS_SOURCE = "firmware/bikemb/src/app/demo_metrics.cpp"
+DASHBOARD_VIEW = "src/firmware/bikemb/src/app/dashboard_view.cpp"
+DASHBOARD_CORE_HEADER = "src/firmware/bikemb/src/app/dashboard_view_core.h"
+DEMO_METRICS_HEADER = "src/firmware/bikemb/src/app/demo_metrics.h"
+DEMO_METRICS_SOURCE = "src/firmware/bikemb/src/app/demo_metrics.cpp"
 
 
 def test_dashboard_pages_do_not_auto_advance_from_demo_metrics() -> None:

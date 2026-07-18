@@ -4,13 +4,13 @@ from contract_helpers import check, read_repo_text
 SETUP_SCRIPT = "tools/setup-lvgl-simulator.ps1"
 OPEN_SCRIPT = "tools/open-lvgl-simulator.ps1"
 SYNC_SCRIPT = "tools/sync-bikemb-simulator-ui.ps1"
-BIKEMB_SIM_UI = "simulator/bikemb_ui/bikemb_dashboard.c"
-BIKEMB_SIM_UI_HEADER = "simulator/bikemb_ui/bikemb_dashboard.h"
-SHARED_DASHBOARD_CORE = "firmware/bikemb/src/app/dashboard_view_core.c"
-SHARED_DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
-SHARED_DASHBOARD_PAGES = "firmware/bikemb/src/app/dashboard_pages.c"
-SHARED_DASHBOARD_STYLE = "firmware/bikemb/src/app/dashboard_ui_style.c"
-FIRMWARE_DASHBOARD_WRAPPER = "firmware/bikemb/src/app/dashboard_view.cpp"
+BIKEMB_SIM_UI = "tools/simulator/bikemb_ui/bikemb_dashboard.c"
+BIKEMB_SIM_UI_HEADER = "tools/simulator/bikemb_ui/bikemb_dashboard.h"
+SHARED_DASHBOARD_CORE = "src/firmware/bikemb/src/app/dashboard_view_core.c"
+SHARED_DASHBOARD_CORE_HEADER = "src/firmware/bikemb/src/app/dashboard_view_core.h"
+SHARED_DASHBOARD_PAGES = "src/firmware/bikemb/src/app/dashboard_pages.c"
+SHARED_DASHBOARD_STYLE = "src/firmware/bikemb/src/app/dashboard_ui_style.c"
+FIRMWARE_DASHBOARD_WRAPPER = "src/firmware/bikemb/src/app/dashboard_view.cpp"
 GITIGNORE = ".gitignore"
 
 
@@ -54,6 +54,12 @@ def test_simulator_open_script_builds_existing_checkout_only() -> None:
     check("C:\\msys64\\usr\\bin\\bash.exe" in source, "Open script should run the Linux-oriented official Makefile through MSYS2 bash on Windows.")
     check("Convert-ToMsysPath" in source, "Open script must convert the checkout path before invoking MSYS2 bash.")
     check("Start-Process" in source, "Open script must open the built PC simulator app for visual review.")
+    check("CapturePath" in source, "Open script must accept a deterministic visual-QA capture path.")
+    check("CapturePage" in source, "Open script must select the visual-QA dashboard page.")
+    check(
+        "BIKEMB_SIMULATOR_CAPTURE_PATH" in source,
+        "Open script must pass the requested capture path to the simulator process.",
+    )
 
 
 def test_simulator_open_script_syncs_bikemb_ui_before_build() -> None:
@@ -70,11 +76,20 @@ def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
     ui_source = read_repo_text(BIKEMB_SIM_UI)
     header_source = read_repo_text(BIKEMB_SIM_UI_HEADER)
 
-    check("simulator\\bikemb_ui" in sync_source, "Sync script must copy the tracked BikeMB UI source.")
+    check("tools\\simulator\\bikemb_ui" in sync_source, "Sync script must copy the tracked BikeMB UI source.")
     check("dashboard_view_core.c" in sync_source, "Sync script must copy the shared dashboard core into the simulator ui directory.")
     check("dashboard_view_core.h" in sync_source, "Sync script must copy the shared dashboard core header into the simulator ui directory.")
+    check("Touch_CST816.h" in sync_source, "Sync script must provide a simulator touch-driver stub.")
+    check("CST816_GESTURE_SWIPE_UP" in sync_source, "Simulator touch stub must include the new settings swipe gesture.")
     check("dashboard_pages.c" in sync_source, "Sync script must copy the shared dashboard pages source.")
     check("dashboard_ui_style.c" in sync_source, "Sync script must copy the shared dashboard style source.")
+    check("SharedAssetsDir" in sync_source, "Sync script must copy generated dashboard visual assets.")
+    check("dashboard_font_speed_140.c" in sync_source, "Sync script must include generated dashboard font assets.")
+    check("dashboard_font_speed_decimal_96.c" in sync_source,
+          "Sync script must include generated decimal dashboard font assets.")
+    check("dashboard_img_home_bezel.c" in sync_source, "Sync script must include the independent bezel asset.")
+    check("dashboard_font_output_80.c" in sync_source,
+          "Sync script must include the generated output-value font.")
     check("lv_port_pc_vscode" in sync_source, "Sync script must target the official LVGL simulator checkout.")
     check("main\\src\\main.c" in sync_source, "Sync script must patch the official simulator main.c entry.")
     check("bikemb_dashboard_create();" in sync_source, "Sync script must switch simulator startup to BikeMB dashboard.")
@@ -85,6 +100,19 @@ def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
     check("lv_timer_create" in ui_source, "BikeMB simulator UI must update demo metrics without modifying simulator main loop.")
     check("BikeMbDashboardView_Create();" in ui_source, "BikeMB simulator UI must create the shared dashboard view.")
     check("BikeMbDashboardView_Update(&metrics);" in ui_source, "BikeMB simulator UI must update the shared dashboard view.")
+    check(
+        "BIKEMB_SIMULATOR_CAPTURE_PATH" in ui_source,
+        "Simulator must support a deterministic screenshot path for visual QA.",
+    )
+    check("SDL_RenderReadPixels" in ui_source, "Simulator visual QA must capture the rendered SDL framebuffer.")
+    check("SDL_SaveBMP" in ui_source, "Simulator visual QA must save a reviewable image without external tools.")
+    check("lv_timer_del" in ui_source, "Simulator screenshot capture must run only once.")
+    check("capture_state ? 24.5f" in ui_source,
+          "Visual QA capture must freeze the reference speed while normal simulation remains dynamic.")
+    check("capture_state ? 45000000U" in ui_source,
+          "Visual QA capture must freeze the reference time while normal simulation remains dynamic.")
+    check("BIKEMB_SIMULATOR_CAPTURE_PAGE" in ui_source,
+          "Visual QA capture must be able to select each dashboard page deterministically.")
 
 
 def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
@@ -98,8 +126,8 @@ def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
     check("BikeMbDashboardView_Create" in core_header, "Shared dashboard core must expose a create entry point.")
     check("BikeMbDashboardView_Update" in core_header, "Shared dashboard core must expose an update entry point.")
     check("BikeMbDashboardPages_Create" in core_source, "Shared dashboard core must delegate page creation to the page module.")
-    check("SPEED TREND" in pages_source, "Shared dashboard pages module must own dashboard content rendering.")
-    check("RIDE DETAILS" in pages_source, "Shared dashboard pages module must own dashboard detail rendering.")
+    check("AUTO OUTPUT" in pages_source, "Shared dashboard pages module must own dashboard content rendering.")
+    check("DISTANCE" in pages_source, "Shared dashboard pages module must own dashboard detail rendering.")
 
     check("dashboard_view_core.h" in firmware_wrapper, "Firmware dashboard wrapper must include the shared dashboard core.")
     check("BikeMbDashboardView_Create();" in firmware_wrapper, "Firmware dashboard create wrapper must delegate to shared core.")

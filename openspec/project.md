@@ -21,8 +21,8 @@ BikeMB 是一个用于学习和实践嵌入式开发的自行车码表项目，�
 
 - 板卡：Waveshare `ESP32-S3-Touch-LCD-1.85C V2`
 - 固件环境：`PlatformIO + Arduino`
-- bring-up 工程：`firmware/bringup`
-- 正式工程：`firmware/bikemb`
+- bring-up 工程：`src/firmware/bringup`
+- 正式工程：`src/firmware/bikemb`
 - UI 框架：`LVGL`
 
 ## 范围

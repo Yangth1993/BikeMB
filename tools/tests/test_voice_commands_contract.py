@@ -1,11 +1,11 @@
 from contract_helpers import REPO_ROOT, check, read_repo_text
 
 
-MAIN = "firmware/bikemb/src/main.cpp"
-CMAKE = "firmware/bikemb/src/CMakeLists.txt"
-VOICE_HEADER = "firmware/bikemb/src/voice/voice_commands.h"
-VOICE_SOURCE = "firmware/bikemb/src/voice/voice_commands.cpp"
-PLATFORMIO_INI = "firmware/bikemb/platformio.ini"
+MAIN = "src/firmware/bikemb/src/main.cpp"
+CMAKE = "src/firmware/bikemb/src/CMakeLists.txt"
+VOICE_HEADER = "src/firmware/bikemb/src/voice/voice_commands.h"
+VOICE_SOURCE = "src/firmware/bikemb/src/voice/voice_commands.cpp"
+PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
 SRMODEL_UPLOAD_SCRIPT = "tools/pio_upload_srmodels.py"
 
 
@@ -60,7 +60,7 @@ def test_voice_commands_have_explicit_opt_in_build_environment() -> None:
         "Voice command environment must use an ESP-SR compatible partition table.",
     )
     check(
-        "extra_scripts = pre:../../tools/pio_upload_srmodels.py" in config,
+        "extra_scripts = pre:../../../tools/pio_upload_srmodels.py" in config,
         "Voice command environment must upload ESP-SR model data before firmware verification.",
     )
     upload_script = read_repo_text(SRMODEL_UPLOAD_SCRIPT)

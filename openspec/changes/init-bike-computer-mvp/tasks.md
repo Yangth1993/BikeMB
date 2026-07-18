@@ -23,7 +23,7 @@
 
 ## 3. 正式 demo 工程
 
-- [ ] 创建 `firmware/bikemb`
+- [ ] 创建 `src/firmware/bikemb`
 - [ ] 接入 `LVGL`
 - [ ] 复用已验证显示驱动
 - [ ] 创建 dashboard 页面

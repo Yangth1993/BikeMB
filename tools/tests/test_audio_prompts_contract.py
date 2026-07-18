@@ -1,18 +1,18 @@
 from contract_helpers import REPO_ROOT, check, read_repo_text
 
 
-MAIN = "firmware/bikemb/src/main.cpp"
-CMAKE = "firmware/bikemb/src/CMakeLists.txt"
-PLATFORMIO_INI = "firmware/bikemb/platformio.ini"
-PROMPTS_HEADER = "firmware/bikemb/src/audio/audio_prompts.h"
-PROMPTS_SOURCE = "firmware/bikemb/src/audio/audio_prompts.cpp"
-PROMPT_ASSETS_HEADER = "firmware/bikemb/src/audio/audio_prompt_assets.h"
-PROMPT_ASSETS_SOURCE = "firmware/bikemb/src/audio/audio_prompt_assets.cpp"
+MAIN = "src/firmware/bikemb/src/main.cpp"
+CMAKE = "src/firmware/bikemb/src/CMakeLists.txt"
+PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
+PROMPTS_HEADER = "src/firmware/bikemb/src/audio/audio_prompts.h"
+PROMPTS_SOURCE = "src/firmware/bikemb/src/audio/audio_prompts.cpp"
+PROMPT_ASSETS_HEADER = "src/firmware/bikemb/src/audio/audio_prompt_assets.h"
+PROMPT_ASSETS_SOURCE = "src/firmware/bikemb/src/audio/audio_prompt_assets.cpp"
 GENERATOR = "tools/generate-mode-prompts.ps1"
-DASHBOARD_PAGES_HEADER = "firmware/bikemb/src/app/dashboard_pages.h"
-DASHBOARD_PAGES_SOURCE = "firmware/bikemb/src/app/dashboard_pages.c"
-DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
-DASHBOARD_APP_HEADER = "firmware/bikemb/src/app/dashboard_app.h"
+DASHBOARD_PAGES_HEADER = "src/firmware/bikemb/src/app/dashboard_pages.h"
+DASHBOARD_PAGES_SOURCE = "src/firmware/bikemb/src/app/dashboard_pages.c"
+DASHBOARD_CORE_HEADER = "src/firmware/bikemb/src/app/dashboard_view_core.h"
+DASHBOARD_APP_HEADER = "src/firmware/bikemb/src/app/dashboard_app.h"
 
 
 def test_mode_audio_prompts_are_present_but_default_off() -> None:
@@ -87,7 +87,7 @@ def test_prompt_generator_uses_external_audio_assets() -> None:
     check((REPO_ROOT / GENERATOR).exists(), "Prompt generator script must exist.")
     script = read_repo_text(GENERATOR)
 
-    check("generated_audio" in script, "Generator must default to the provided generated_audio assets.")
+    check("src/assets/audio/mode-prompts" in script, "Generator must default to the provided source audio assets.")
     check("eco.mp3" in script, "Generator must read the ECO source audio.")
     check("trail.mp3" in script, "Generator must read the TRAIL source audio.")
     check("boost.mp3" in script, "Generator must read the BOOST source audio.")

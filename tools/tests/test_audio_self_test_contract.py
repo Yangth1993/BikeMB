@@ -1,17 +1,17 @@
 from contract_helpers import REPO_ROOT, check, read_repo_text
 
 
-MAIN = "firmware/bikemb/src/main.cpp"
-CMAKE = "firmware/bikemb/src/CMakeLists.txt"
-AUDIO_HEADER = "firmware/bikemb/src/audio/audio_self_test.h"
-AUDIO_SOURCE = "firmware/bikemb/src/audio/audio_self_test.cpp"
-PLATFORMIO_INI = "firmware/bikemb/platformio.ini"
-DASHBOARD_CORE_HEADER = "firmware/bikemb/src/app/dashboard_view_core.h"
-DASHBOARD_CORE_SOURCE = "firmware/bikemb/src/app/dashboard_view_core.c"
-DASHBOARD_APP_HEADER = "firmware/bikemb/src/app/dashboard_app.h"
-DASHBOARD_APP_SOURCE = "firmware/bikemb/src/app/dashboard_app.cpp"
-DASHBOARD_VIEW_HEADER = "firmware/bikemb/src/app/dashboard_view.h"
-DASHBOARD_VIEW_SOURCE = "firmware/bikemb/src/app/dashboard_view.cpp"
+MAIN = "src/firmware/bikemb/src/main.cpp"
+CMAKE = "src/firmware/bikemb/src/CMakeLists.txt"
+AUDIO_HEADER = "src/firmware/bikemb/src/audio/audio_self_test.h"
+AUDIO_SOURCE = "src/firmware/bikemb/src/audio/audio_self_test.cpp"
+PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
+DASHBOARD_CORE_HEADER = "src/firmware/bikemb/src/app/dashboard_view_core.h"
+DASHBOARD_CORE_SOURCE = "src/firmware/bikemb/src/app/dashboard_view_core.c"
+DASHBOARD_APP_HEADER = "src/firmware/bikemb/src/app/dashboard_app.h"
+DASHBOARD_APP_SOURCE = "src/firmware/bikemb/src/app/dashboard_app.cpp"
+DASHBOARD_VIEW_HEADER = "src/firmware/bikemb/src/app/dashboard_view.h"
+DASHBOARD_VIEW_SOURCE = "src/firmware/bikemb/src/app/dashboard_view.cpp"
 
 
 def test_audio_self_test_is_present_but_default_off() -> None:

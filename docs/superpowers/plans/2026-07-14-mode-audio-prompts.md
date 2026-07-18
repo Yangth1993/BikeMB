@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Keep the feature in `firmware/bikemb`; do not create a long-lived second firmware project.
+- Keep the feature in `src/firmware/bikemb`; do not create a long-lived second firmware project.
 - Keep prompt playback behind `BIKE_MB_ENABLE_AUDIO_PROMPTS`, default off.
 - Use local `Microsoft Kangkang` zh-CN male TTS when available.
 - Do not add cloud TTS or real-time TTS.
@@ -32,8 +32,8 @@
 
 **Files:**
 - Create: `tools/generate-mode-prompts.ps1`
-- Create: `firmware/bikemb/src/audio/audio_prompt_assets.h`
-- Create: `firmware/bikemb/src/audio/audio_prompt_assets.cpp`
+- Create: `src/firmware/bikemb/src/audio/audio_prompt_assets.h`
+- Create: `src/firmware/bikemb/src/audio/audio_prompt_assets.cpp`
 
 - [ ] Generate `ECO`, `TRAIL`, and `BOOST` WAV files with local Windows TTS voice `Microsoft Kangkang`.
 - [ ] Convert WAV payloads to firmware PCM arrays.
@@ -41,11 +41,11 @@
 ### Task 3: Firmware Playback
 
 **Files:**
-- Create: `firmware/bikemb/src/audio/audio_prompts.h`
-- Create: `firmware/bikemb/src/audio/audio_prompts.cpp`
-- Modify: `firmware/bikemb/src/CMakeLists.txt`
-- Modify: `firmware/bikemb/platformio.ini`
-- Modify: `firmware/bikemb/src/main.cpp`
+- Create: `src/firmware/bikemb/src/audio/audio_prompts.h`
+- Create: `src/firmware/bikemb/src/audio/audio_prompts.cpp`
+- Modify: `src/firmware/bikemb/src/CMakeLists.txt`
+- Modify: `src/firmware/bikemb/platformio.ini`
+- Modify: `src/firmware/bikemb/src/main.cpp`
 
 - [ ] Add `BikeMbAudioPrompts_Init()` and `BikeMbAudioPrompts_PlayMode(...)`.
 - [ ] Add `esp32-s3-touch-lcd-1-85c-mode-prompts-test` env.
@@ -54,14 +54,14 @@
 ### Task 4: UI Event Bridge
 
 **Files:**
-- Modify: `firmware/bikemb/src/app/dashboard_pages.h`
-- Modify: `firmware/bikemb/src/app/dashboard_pages.c`
-- Modify: `firmware/bikemb/src/app/dashboard_view_core.h`
-- Modify: `firmware/bikemb/src/app/dashboard_view_core.c`
-- Modify: `firmware/bikemb/src/app/dashboard_view.h`
-- Modify: `firmware/bikemb/src/app/dashboard_view.cpp`
-- Modify: `firmware/bikemb/src/app/dashboard_app.h`
-- Modify: `firmware/bikemb/src/app/dashboard_app.cpp`
+- Modify: `src/firmware/bikemb/src/app/dashboard_pages.h`
+- Modify: `src/firmware/bikemb/src/app/dashboard_pages.c`
+- Modify: `src/firmware/bikemb/src/app/dashboard_view_core.h`
+- Modify: `src/firmware/bikemb/src/app/dashboard_view_core.c`
+- Modify: `src/firmware/bikemb/src/app/dashboard_view.h`
+- Modify: `src/firmware/bikemb/src/app/dashboard_view.cpp`
+- Modify: `src/firmware/bikemb/src/app/dashboard_app.h`
+- Modify: `src/firmware/bikemb/src/app/dashboard_app.cpp`
 
 - [ ] Add a mode changed callback that passes the new mode index.
 - [ ] Wire `main.cpp` to play the matching prompt.
@@ -70,4 +70,4 @@
 
 - [ ] Run `py -X utf8 tools/tests/test_audio_prompts_contract.py`.
 - [ ] Run `powershell -ExecutionPolicy Bypass -File tools/run-tests.ps1`.
-- [ ] Run `pio run -s -d firmware/bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test`.
+- [ ] Run `pio run -s -d src/firmware/bikemb -e esp32-s3-touch-lcd-1-85c-mode-prompts-test`.

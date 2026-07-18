@@ -28,6 +28,6 @@ BikeMB 是一个基于 `ESP32-S3` 与圆形屏幕的自行车码表项目。第�
 
 ## 当前实现策略
 
-- `firmware/bringup`：继续保留为硬件验证工程
-- `firmware/bikemb`：作为正式 demo 工程
+- `src/firmware/bringup`：继续保留为硬件验证工程
+- `src/firmware/bikemb`：作为正式 demo 工程
 - 正式 UI 使用 `LVGL`
