@@ -15,6 +15,7 @@ node_modules/
 .npm-cache/
 tools/lv_port_pc_vscode/
 src/firmware/bikemb/dependencies.lock
+src/firmware/bikemb/include/ai_secrets.local.h
 src/firmware/bikemb/sdkconfig.*
 !src/firmware/bikemb/sdkconfig.defaults
 *.bin
