@@ -134,6 +134,16 @@ static void update_dashboard(lv_timer_t *timer) {
       .gradePercent = 4.0f,
       .batteryPercent = 96,
       .wavePhase = (uint8_t)((now / 220U) % 24U),
+      .ai = {
+          .visual_state = BIKE_MB_DASHBOARD_AI_VISUAL_OFFLINE,
+          .preferred_surface = BIKE_MB_DASHBOARD_AI_SURFACE_FULL_PAGE,
+          .battery_percent = 96,
+          .can_cancel = 0,
+          .can_retry = 0,
+          .network_text = "Offline",
+          .state_text = "Offline",
+          .action_hint = "AI unavailable",
+      },
   };
   BikeMbDashboardView_Update(&metrics);
 }

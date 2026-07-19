@@ -61,6 +61,13 @@ def test_native_ai_reducers():
             PROJECT_ROOT / "tools" / "tests" / "ai_state_machine_test.cpp",
         ],
     )
+    compile_and_run(
+        "ai_assistant_ui_state_test",
+        [
+            FIRMWARE_ROOT / "src" / "app" / "ai_assistant_ui_state.cpp",
+            PROJECT_ROOT / "tools" / "tests" / "ai_assistant_ui_state_test.cpp",
+        ],
+    )
 
 
 def test_runtime_ownership_contract():

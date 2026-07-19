@@ -100,6 +100,7 @@ def test_bikemb_simulator_ui_uses_official_ui_mechanism() -> None:
     check("lv_timer_create" in ui_source, "BikeMB simulator UI must update demo metrics without modifying simulator main loop.")
     check("BikeMbDashboardView_Create();" in ui_source, "BikeMB simulator UI must create the shared dashboard view.")
     check("BikeMbDashboardView_Update(&metrics);" in ui_source, "BikeMB simulator UI must update the shared dashboard view.")
+    check(".ai =" in ui_source, "BikeMB simulator UI must populate the shared AI dashboard state.")
     check(
         "BIKEMB_SIMULATOR_CAPTURE_PATH" in ui_source,
         "Simulator must support a deterministic screenshot path for visual QA.",
@@ -126,7 +127,7 @@ def test_dashboard_view_core_is_shared_by_firmware_and_simulator() -> None:
     check("BikeMbDashboardView_Create" in core_header, "Shared dashboard core must expose a create entry point.")
     check("BikeMbDashboardView_Update" in core_header, "Shared dashboard core must expose an update entry point.")
     check("BikeMbDashboardPages_Create" in core_source, "Shared dashboard core must delegate page creation to the page module.")
-    check("AUTO OUTPUT" in pages_source, "Shared dashboard pages module must own dashboard content rendering.")
+    check("ai_state_label" in pages_source, "Shared dashboard pages module must own AI page content rendering.")
     check("DISTANCE" in pages_source, "Shared dashboard pages module must own dashboard detail rendering.")
 
     check("dashboard_view_core.h" in firmware_wrapper, "Firmware dashboard wrapper must include the shared dashboard core.")

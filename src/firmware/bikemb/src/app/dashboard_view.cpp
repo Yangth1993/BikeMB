@@ -18,7 +18,7 @@ void DashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallback cal
   BikeMbDashboardView_SetModeChangedCallback(callback);
 }
 
-void DashboardView_Update(const DemoMetrics &metrics) {
+void DashboardView_Update(const DemoMetrics &metrics, const BikeMbDashboardAiUiState &ai) {
   BikeMbDashboardMetrics viewMetrics{};
   viewMetrics.fps = metrics.fps;
   viewMetrics.cpuLoad = metrics.cpuLoad;
@@ -39,6 +39,7 @@ void DashboardView_Update(const DemoMetrics &metrics) {
   viewMetrics.gradePercent = metrics.gradePercent;
   viewMetrics.batteryPercent = metrics.batteryPercent;
   viewMetrics.wavePhase = metrics.wavePhase;
+  viewMetrics.ai = ai;
 
   BikeMbDashboardView_Update(&viewMetrics);
 }

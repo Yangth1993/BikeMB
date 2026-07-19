@@ -70,8 +70,8 @@ static void update_mode_accents(BikeMbDashboardPages *pages) {
   if (pages->wave_line != NULL) {
     lv_obj_set_style_line_color(pages->wave_line, accent, 0);
   }
-  if (pages->wave_title != NULL) {
-    lv_obj_set_style_text_color(pages->wave_title, accent, 0);
+  if (pages->ai_identity != NULL) {
+    lv_obj_set_style_text_color(pages->ai_identity, accent, 0);
   }
   if (pages->wave_value_unit != NULL) {
     lv_obj_set_style_text_color(pages->wave_value_unit, BikeMbUi_ColorMuted(), 0);
@@ -200,65 +200,46 @@ static void create_home_page(BikeMbDashboardPages *pages, lv_obj_t *page) {
   create_page_dots(pages, page, 0);
 }
 
-static lv_obj_t *make_graph_label(lv_obj_t *parent, const char *text, lv_coord_t x, lv_coord_t y) {
-  return BikeMbUi_MakeLabel(parent, text, &lv_font_montserrat_14, BikeMbUi_ColorMuted(), x, y);
-}
-
-static void create_grid_line(lv_obj_t *parent, lv_coord_t x, lv_coord_t y, lv_coord_t w, lv_coord_t h) {
-  lv_obj_t *line = lv_obj_create(parent);
-  BikeMbUi_StyleClear(line);
-  lv_obj_set_size(line, w, h);
-  lv_obj_set_pos(line, x, y);
-  lv_obj_set_style_bg_color(line, BikeMbUi_Rgb(55, 62, 68), 0);
-  lv_obj_set_style_bg_opa(line, LV_OPA_50, 0);
-}
-
-static void create_wave_page(BikeMbDashboardPages *pages, lv_obj_t *page) {
+static void create_ai_page(BikeMbDashboardPages *pages, lv_obj_t *page) {
   create_dashboard_bezel(page);
-  BikeMbUi_MakeLabel(page, "AUTO", &lv_font_montserrat_22, BikeMbUi_ColorAuto(), 90, 58);
-  pages->home_battery = pages->home_battery;
-  BikeMbUi_MakeFixedLabel(
-      page, "96%", &lv_font_montserrat_18, BikeMbUi_ColorText(), 203, 55, 64, LV_TEXT_ALIGN_RIGHT);
-  BikeMbUi_MakeLabel(page, LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_18, BikeMbUi_ColorText(), 275, 55);
-  create_grid_line(page, 75, 100, 54, 1);
-  create_grid_line(page, 241, 100, 55, 1);
-  pages->wave_title = BikeMbUi_MakeFixedLabel(
-      page, "AUTO OUTPUT", &lv_font_montserrat_22, BikeMbUi_ColorAuto(), 92, 92, 176, LV_TEXT_ALIGN_CENTER);
+  pages->ai_battery = BikeMbUi_MakeFixedLabel(
+      page, "96%", &lv_font_montserrat_18, BikeMbUi_ColorText(), 58, 55, 72, LV_TEXT_ALIGN_LEFT);
+  BikeMbUi_MakeLabel(page, LV_SYMBOL_BATTERY_FULL, &lv_font_montserrat_18, BikeMbUi_ColorText(), 33, 55);
+  pages->ai_network = BikeMbUi_MakeFixedLabel(
+      page, "Offline", &lv_font_montserrat_18, BikeMbUi_ColorMuted(), 214, 55, 96, LV_TEXT_ALIGN_RIGHT);
 
-  pages->wave_value = BikeMbUi_MakeFixedLabel(
-      page, "186", &lv_font_montserrat_48, BikeMbUi_ColorText(), 84, 116, 152, LV_TEXT_ALIGN_RIGHT);
-  pages->wave_value_unit = BikeMbUi_MakeLabel(page, "W", &lv_font_montserrat_22, BikeMbUi_ColorMuted(), 226, 153);
+  pages->ai_ring = lv_arc_create(page);
+  lv_obj_set_size(pages->ai_ring, 184, 184);
+  lv_obj_set_pos(pages->ai_ring, 88, 78);
+  lv_arc_set_range(pages->ai_ring, 0, 100);
+  lv_arc_set_value(pages->ai_ring, 15);
+  lv_obj_clear_flag(pages->ai_ring, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_remove_style(pages->ai_ring, NULL, LV_PART_KNOB);
+  lv_obj_set_style_arc_width(pages->ai_ring, 9, LV_PART_MAIN);
+  lv_obj_set_style_arc_width(pages->ai_ring, 9, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_color(pages->ai_ring, BikeMbUi_Rgb(48, 54, 58), LV_PART_MAIN);
+  lv_obj_set_style_arc_color(pages->ai_ring, BikeMbUi_ColorMuted(), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(pages->ai_ring, LV_OPA_TRANSP, 0);
 
-  lv_obj_t *graph = lv_obj_create(page);
-  BikeMbUi_StyleClear(graph);
-  lv_obj_set_size(graph, 296, 144);
-  lv_obj_set_pos(graph, 32, 177);
-  lv_obj_set_style_bg_opa(graph, LV_OPA_TRANSP, 0);
-  lv_obj_set_style_border_width(graph, 0, 0);
-  lv_obj_set_style_pad_all(graph, 0, 0);
-
-  for (uint8_t i = 0; i < 3; ++i) {
-    create_grid_line(graph, 42, 39 + i * 36, 243, 1);
-  }
-  create_grid_line(graph, 42, 16, 1, 100);
-  create_grid_line(graph, 285, 16, 1, 100);
-
-  make_graph_label(graph, "400", 0, 25);
-  make_graph_label(graph, "200", 0, 61);
-  make_graph_label(graph, "0", 14, 97);
-  make_graph_label(graph, "-60 s", 42, 116);
-  make_graph_label(graph, "-30 s", 142, 116);
-  make_graph_label(graph, "0", 282, 116);
-
-  pages->wave_line = lv_line_create(graph);
+  pages->wave_line = lv_line_create(page);
   lv_obj_set_style_line_color(pages->wave_line, BikeMbUi_ColorAuto(), 0);
-  lv_obj_set_style_line_width(pages->wave_line, 4, 0);
+  lv_obj_set_style_line_width(pages->wave_line, 5, 0);
   lv_obj_set_style_line_rounded(pages->wave_line, true, 0);
   lv_obj_set_pos(pages->wave_line, 0, 0);
 
+  pages->ai_identity = BikeMbUi_MakeFixedLabel(
+      page, "AI", &lv_font_montserrat_18, BikeMbUi_ColorAuto(), 144, 189, 72, LV_TEXT_ALIGN_CENTER);
+  pages->ai_state_label = BikeMbUi_MakeFixedLabel(
+      page, "Offline", &lv_font_montserrat_28, BikeMbUi_ColorText(), 64, 246, 232, LV_TEXT_ALIGN_CENTER);
+  pages->ai_action_hint = BikeMbUi_MakeFixedLabel(
+      page, "AI unavailable", &lv_font_montserrat_18, BikeMbUi_ColorMuted(), 64, 286, 232, LV_TEXT_ALIGN_CENTER);
+
+  pages->wave_value = NULL;
+  pages->wave_value_unit = NULL;
   pages->wave_direction = NULL;
   pages->wave_temp = NULL;
   pages->wave_grade = NULL;
+  pages->wave_title = NULL;
   create_page_dots(pages, page, 1);
 }
 
@@ -385,20 +366,77 @@ static void create_settings_pages(BikeMbDashboardPages *pages, lv_obj_t *screen)
       BikeMbUi_ColorMuted(), 78, 214, 204, LV_TEXT_ALIGN_CENTER);
 }
 
-static void update_wave(BikeMbDashboardPages *pages, uint8_t phase) {
-  static const uint8_t shape[BIKE_MB_DASHBOARD_WAVE_POINT_COUNT] = {
-      22, 30, 48, 60, 52, 36, 42, 64,
-      70, 56, 42, 34, 44, 52, 58, 76,
-      92, 72, 60, 52, 62, 54, 45, 58,
+static lv_color_t ai_accent_color(BikeMbDashboardAiVisualState state) {
+  switch (state) {
+    case BIKE_MB_DASHBOARD_AI_VISUAL_ERROR:
+      return BikeMbUi_ColorBoost();
+    case BIKE_MB_DASHBOARD_AI_VISUAL_OFFLINE:
+      return BikeMbUi_ColorMuted();
+    default:
+      return BikeMbUi_ColorAuto();
+  }
+}
+
+static uint8_t ai_ring_value(const BikeMbDashboardAiUiState *ai, uint8_t phase) {
+  switch (ai->visual_state) {
+    case BIKE_MB_DASHBOARD_AI_VISUAL_OFFLINE:
+      return 12;
+    case BIKE_MB_DASHBOARD_AI_VISUAL_IDLE:
+      return 28;
+    case BIKE_MB_DASHBOARD_AI_VISUAL_THINKING:
+    case BIKE_MB_DASHBOARD_AI_VISUAL_SENDING:
+      return (uint8_t)(45 + (phase % 12) * 4);
+    case BIKE_MB_DASHBOARD_AI_VISUAL_ERROR:
+      return 70;
+    default:
+      return 82;
+  }
+}
+
+static void update_ai_wave(BikeMbDashboardPages *pages,
+                           const BikeMbDashboardAiUiState *ai,
+                           uint8_t phase) {
+  static const uint8_t active_shape[BIKE_MB_DASHBOARD_WAVE_POINT_COUNT] = {
+      16, 26, 44, 56, 38, 22, 34, 62,
+      72, 48, 28, 18, 36, 48, 60, 78,
+      54, 36, 28, 46, 64, 42, 24, 34,
   };
 
   for (uint8_t i = 0; i < BIKE_MB_DASHBOARD_WAVE_POINT_COUNT; ++i) {
-    const uint8_t value = shape[(i + phase) % BIKE_MB_DASHBOARD_WAVE_POINT_COUNT];
-    pages->wave_points[i].x = 42 + i * 10 + i / 2;
-    pages->wave_points[i].y = 126 - (value * 11) / 10;
+    uint8_t value = 10;
+    if (ai->visual_state == BIKE_MB_DASHBOARD_AI_VISUAL_LISTENING ||
+        ai->visual_state == BIKE_MB_DASHBOARD_AI_VISUAL_SPEAKING ||
+        ai->visual_state == BIKE_MB_DASHBOARD_AI_VISUAL_MUSIC) {
+      value = active_shape[(i + phase) % BIKE_MB_DASHBOARD_WAVE_POINT_COUNT];
+    } else if (ai->visual_state == BIKE_MB_DASHBOARD_AI_VISUAL_SENDING ||
+               ai->visual_state == BIKE_MB_DASHBOARD_AI_VISUAL_THINKING) {
+      value = (uint8_t)(12 + ((i + phase) % 6) * 7);
+    }
+
+    pages->wave_points[i].x = 88 + i * 8;
+    pages->wave_points[i].y = 170 - (value / 2);
   }
 
   lv_line_set_points(pages->wave_line, pages->wave_points, BIKE_MB_DASHBOARD_WAVE_POINT_COUNT);
+}
+
+static void update_ai_page(BikeMbDashboardPages *pages, const BikeMbDashboardMetrics *metrics) {
+  const BikeMbDashboardAiUiState *ai = &metrics->ai;
+  const lv_color_t accent = ai_accent_color(ai->visual_state);
+  char text[16];
+
+  snprintf(text, sizeof(text), "%u%%", ai->battery_percent);
+  set_label_text_if_changed(pages->ai_battery, text);
+  set_label_text_if_changed(pages->ai_network, ai->network_text);
+  set_label_text_if_changed(pages->ai_state_label, ai->state_text);
+  set_label_text_if_changed(pages->ai_action_hint, ai->action_hint);
+
+  lv_obj_set_style_text_color(pages->ai_network, accent, 0);
+  lv_obj_set_style_text_color(pages->ai_identity, accent, 0);
+  lv_obj_set_style_arc_color(pages->ai_ring, accent, LV_PART_INDICATOR);
+  lv_arc_set_value(pages->ai_ring, ai_ring_value(ai, metrics->wavePhase));
+  lv_obj_set_style_line_color(pages->wave_line, accent, 0);
+  update_ai_wave(pages, ai, metrics->wavePhase);
 }
 
 static void format_time(char *buffer, size_t size, uint32_t seconds) {
@@ -422,7 +460,7 @@ void BikeMbDashboardPages_Create(BikeMbDashboardPages *pages, lv_obj_t *page_obj
   }
 
   create_home_page(pages, page_objs[0]);
-  create_wave_page(pages, page_objs[1]);
+  create_ai_page(pages, page_objs[1]);
   create_details_page(pages, page_objs[2]);
   create_settings_pages(pages, lv_obj_get_parent(page_objs[0]));
   update_mode_accents(pages);
@@ -512,9 +550,6 @@ void BikeMbDashboardPages_Update(BikeMbDashboardPages *pages, const BikeMbDashbo
   snprintf(text, sizeof(text), "%u", (unsigned int)(metrics->assistPowerW + 0.5f));
   set_label_text_if_changed(pages->home_assist, text);
 
-  snprintf(text, sizeof(text), "%u", (unsigned int)(metrics->assistPowerW + 0.5f));
-  set_label_text_if_changed(pages->wave_value, text);
-
   snprintf(text, sizeof(text), "%.1f km", (double)metrics->tripKm);
   set_label_text_if_changed(pages->detail_trip, text);
 
@@ -524,5 +559,5 @@ void BikeMbDashboardPages_Update(BikeMbDashboardPages *pages, const BikeMbDashbo
   set_label_text_if_changed(pages->detail_total, "70 rpm");
   set_label_text_if_changed(pages->detail_average, "495 m");
 
-  update_wave(pages, metrics->wavePhase);
+  update_ai_page(pages, metrics);
 }

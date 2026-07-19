@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "ai_assistant_ui_state.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,7 @@ typedef struct BikeMbDashboardMetrics {
   float gradePercent;
   uint8_t batteryPercent;
   uint8_t wavePhase;
+  BikeMbDashboardAiUiState ai;
 } BikeMbDashboardMetrics;
 
 void BikeMbDashboardView_Create(void);

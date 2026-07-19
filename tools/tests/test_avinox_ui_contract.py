@@ -37,7 +37,8 @@ def test_dashboard_uses_avinox_single_mode_color() -> None:
     check("home_speed_major" in header, "Home speed must split the large integer digits from the decimal digit.")
     check("home_speed_decimal" in header, "Home speed must keep a separate decimal label for Avinox hierarchy.")
     check("home_assist_glow" in header, "Home assist visualization must retain its generated segmented artwork.")
-    check("wave_value_unit" in header, "Output page must split value and unit for Avinox hierarchy.")
+    check("ai_state_label" in header, "AI page must keep a dedicated state label.")
+    check("ai_action_hint" in header, "AI page must keep a dedicated action hint.")
     check("detail_icons" in header, "Detail page icons must be recolored with the active mode color.")
     check("BIKE_MB_DASHBOARD_MODE_COUNT = 4" in header, "Dashboard must support ECO/TRAIL/AUTO/BOOST.")
 
@@ -50,7 +51,7 @@ def test_dashboard_uses_avinox_single_mode_color() -> None:
     check("bike_mb_img_home_assist_glow" in source, "Home assist visualization must use the generated segmented image.")
     check("lv_obj_set_style_img_recolor(pages->home_assist_glow" in source,
           "Mode updates must recolor the generated assist artwork.")
-    check("lv_obj_set_style_line_color(pages->wave_line" in source, "Trend line must recolor by mode.")
+    check("lv_obj_set_style_line_color(pages->wave_line" in source, "AI waveform line must recolor by state.")
 
 
 def test_home_time_is_prominent() -> None:
@@ -67,15 +68,15 @@ def test_home_time_is_prominent() -> None:
     check('"TIME"' not in body, "Home time must match the reference without a redundant TIME caption.")
 
 
-def test_wave_page_matches_reference_structure() -> None:
+def test_ai_page_matches_selected_design_structure() -> None:
     source = read_repo_text(PAGES_SOURCE)
-    body = find_function_body(source, "static void create_wave_page")
+    body = find_function_body(source, "static void create_ai_page")
 
-    check("create_dashboard_bezel" in body, "Wave page must reuse the reference metal bezel asset.")
-    check("&lv_font_montserrat_48" in body,
-          "Wave output value must use the hardware-verified built-in font.")
-    check("lv_obj_set_style_bg_opa(graph, LV_OPA_TRANSP" in body,
-          "Wave graph must remain transparent instead of rendering a white panel.")
+    check("create_dashboard_bezel" in body, "AI page must reuse the reference metal bezel asset.")
+    check("pages->ai_ring = lv_arc_create" in body, "AI page must render the selected center status ring.")
+    check("pages->wave_line = lv_line_create" in body, "AI page must render the selected waveform language.")
+    check('"AI"' in body, "AI page must show the compact AI identity label.")
+    check('"Offline"' in body, "AI page must have a safe offline default before snapshots arrive.")
 
 
 def test_settings_ux_is_implemented() -> None:
@@ -114,7 +115,7 @@ if __name__ == "__main__":
     test_mode_color_tokens_exist()
     test_dashboard_uses_avinox_single_mode_color()
     test_home_time_is_prominent()
-    test_wave_page_matches_reference_structure()
+    test_ai_page_matches_selected_design_structure()
     test_settings_ux_is_implemented()
     test_simulator_uses_current_dashboard_metrics()
     test_design_doc_is_linked_to_implementation_terms()

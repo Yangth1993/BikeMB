@@ -27,7 +27,7 @@
 - [ ] Add `qwen3-asr-flash` adapter spike using streamed Base64 WAV JSON without duplicating the full clip.
 - [ ] Add DeepSeek adapter with response-length limits and redacted logs.
 - [ ] Add `cosyvoice-v3-flash` HTTP/SSE adapter with chunked 16 kHz mono PCM playback.
-- [ ] Add dashboard AI status indicator and dedicated AI page using snapshots only.
+- [x] Add dashboard AI status indicator and dedicated AI page using snapshots only.
 - [ ] Add HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, Arduino 3.x, and custom PCM sink checks.
 - [ ] Add `MusicService` for preset and private user URL playback.
 - [ ] Add cancel/stop integration across HTTP, audio capture, TTS, and music.

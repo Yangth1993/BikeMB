@@ -39,6 +39,12 @@ typedef struct BikeMbDashboardPages {
   lv_obj_t *wave_temp;
   lv_obj_t *wave_grade;
   lv_obj_t *wave_title;
+  lv_obj_t *ai_battery;
+  lv_obj_t *ai_network;
+  lv_obj_t *ai_ring;
+  lv_obj_t *ai_identity;
+  lv_obj_t *ai_state_label;
+  lv_obj_t *ai_action_hint;
   lv_obj_t *detail_trip;
   lv_obj_t *detail_time;
   lv_obj_t *detail_total;

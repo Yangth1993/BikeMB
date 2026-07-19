@@ -2,6 +2,7 @@ set(BIKEMB_SRCS
     ai/ai_assistant.cpp
     ai/ai_state_machine.cpp
     ai/cloud_worker.cpp
+    app/ai_assistant_ui_state.cpp
     app/dashboard_app.cpp
     app/assets/dashboard_font_speed_140.c
     app/assets/dashboard_font_speed_decimal_96.c

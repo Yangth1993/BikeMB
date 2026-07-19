@@ -1,5 +1,9 @@
 #include "dashboard_app.h"
 
+#include "ai/ai_assistant.h"
+#include "ai/ai_config.h"
+#include "ai/ai_types.h"
+#include "ai_assistant_ui_state.h"
 #include "dashboard_view.h"
 #include "platform/bike_platform.h"
 #include "services/metrics_service.h"
@@ -44,5 +48,16 @@ void DashboardApp_Tick(uint32_t nowMs) {
   g_lastUpdateMs = nowMs;
 
   const DemoMetrics metrics = MetricsService_UpdateDashboard(elapsedMs, kFrameIntervalMs, g_renderWorkMs);
-  DashboardView_Update(metrics);
+  BikeMbAiSnapshot aiSnapshot{};
+#if BIKE_MB_ENABLE_AI_ASSISTANT
+  BikeMbAiAssistant_GetSnapshot(&aiSnapshot);
+#else
+  aiSnapshot.state = BIKE_MB_AI_DISABLED;
+  aiSnapshot.stateSinceMs = nowMs;
+  aiSnapshot.wifiConnected = false;
+  aiSnapshot.cancelAvailable = false;
+#endif
+
+  const BikeMbDashboardAiUiState aiUi = BikeMbAiUiState_FromSnapshot(aiSnapshot, metrics.batteryPercent);
+  DashboardView_Update(metrics, aiUi);
 }
