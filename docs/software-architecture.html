@@ -548,12 +548,13 @@
       <div class="brand">
         <div class="brand-mark">BM</div>
         <h1>BikeMB 固件架构</h1>
-        <p>UI / 音频输出 / 语音识别 / 固件分区</p>
+        <p>UI / AI 助手 / 音频 / 网络 / 固件分区</p>
       </div>
       <nav class="nav">
         <a href="#runtime">运行路径</a>
         <a href="#main-loop">主循环</a>
         <a href="#ui">UI 框架</a>
+        <a href="#ai-assistant">AI 助手 <span class="toc-tag">current</span></a>
         <a href="#audio-pins">音频引脚</a>
         <a href="#audio-output">语音输出 <span class="toc-tag">new</span></a>
         <a href="#voice">语音识别 <span class="toc-tag">new</span></a>
@@ -568,28 +569,28 @@
       <header class="hero" id="top">
         <span class="eyebrow">Firmware map for src/firmware/bikemb</span>
         <h2>BikeMB 当前固件框架说明</h2>
-        <p>这份 HTML 用来快速查代码路径：页面从哪里创建、档位播报怎么触发、语音识别如何进入翻页命令、ESP-SR 模型分区如何烧录。</p>
+        <p>这份 HTML 用来快速查当前代码路径：dashboard 如何渲染、BOOT 键如何进入 AI 状态机、后台 Wi-Fi 与 mock cloud worker 如何通信，以及真实音频和云 provider 还缺哪些模块。</p>
         <div class="hero-stats">
           <div class="stat"><strong>Arduino</strong><span>当前硬件验证主路径</span></div>
           <div class="stat"><strong>LVGL</strong><span>圆屏 UI 渲染框架</span></div>
-          <div class="stat"><strong>ES8311</strong><span>语音输出 Codec</span></div>
-          <div class="stat"><strong>ES7210</strong><span>麦克风输入 Codec</span></div>
+          <div class="stat"><strong>FreeRTOS</strong><span>AI / Cloud / Wi-Fi tasks</span></div>
+          <div class="stat"><strong>Mock AI</strong><span>控制框架已进入源码</span></div>
         </div>
       </header>
 
       <section id="runtime">
         <div class="section-head">
           <h2>当前运行路径</h2>
-          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。当前 UI、触摸、语音输出、语音识别都在 Arduino 环境验证。</p>
+          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。当前 UI、触摸、语音输出、语音识别和 AI 控制框架都以 Arduino 环境为主。</p>
         </div>
         <div class="grid two">
           <article class="card">
             <h3>默认路径：Arduino</h3>
-            <p>入口在 <code>main.cpp</code> 的 <code>setup()</code> / <code>loop()</code>。当前上板验证的 dashboard、触摸滑动、档位播报、音频自检、直接语音识别都走这里。</p>
+            <p>入口在 <code>main.cpp</code> 的 <code>setup()</code> / <code>loop()</code>。dashboard、触摸滑动、档位播报、音频自检、直接语音识别以及默认关闭的 AI framework 都走这里。</p>
           </article>
           <article class="card">
             <h3>迁移路径：ESP-IDF</h3>
-            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。目前已有 Runtime/Event/Service 骨架，但音频和语音还没有迁移过去。</p>
+            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。目前已有 Runtime/Event/Service 骨架，但 AI、音频和语音尚未接入这条运行路径。</p>
           </article>
         </div>
       </section>
@@ -603,7 +604,7 @@
           <div class="node"><b>main.cpp</b><span>setup/loop、编译开关、命令路由</span></div>
           <div class="node"><b>DashboardApp</b><span>UI 对外命令边界：翻页、tick、档位 callback</span></div>
           <div class="node"><b>View Core</b><span>页面容器、触摸手势、页面显示状态</span></div>
-          <div class="node"><b>Pages</b><span>三个页面的 LVGL object tree 和 label 更新</span></div>
+          <div class="node"><b>Pages</b><span>首页 / AI / 详情的 LVGL object tree</span></div>
           <div class="node"><b>LVGL Port</b><span>display flush、touch read、lv_timer_handler</span></div>
         </div>
         <div class="grid" style="margin-top:14px">
@@ -619,6 +620,10 @@
             <h3>固件分区</h3>
             <p>默认固件用 framework 默认分区；ESP-SR 测试环境使用 <code>esp_sr_16.csv</code> 并追加烧录 <code>srmodels.bin</code>。</p>
           </article>
+          <article class="card">
+            <h3>AI 控制框架</h3>
+            <p><code>ai_assistant</code> 拥有状态和 snapshot；<code>ai_button</code>、<code>wifi_service</code> 与 <code>cloud_worker</code> 只投递带 request ID 的事件。</p>
+          </article>
         </div>
       </section>
 
@@ -633,15 +638,17 @@
           <tr><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST</code></td><td><code>0</code></td><td><code>audio-self-test</code></td><td>beep、麦克风 RMS、串口 <code>n/p</code> 模拟翻页。</td></tr>
           <tr><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS</code></td><td><code>0</code></td><td><code>mode-prompts-test</code></td><td>点击档位播放预录语音。</td></tr>
           <tr><td><code>BIKE_MB_ENABLE_VOICE_COMMANDS</code></td><td><code>0</code></td><td><code>voice-direct-test</code></td><td>ESP-SR 直接语音命令识别。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_AI_ASSISTANT</code></td><td><code>0</code></td><td><code>ai-framework-test</code></td><td>启用 BOOT 键、AI control task、UI snapshot 和 Wi-Fi service。</td></tr>
+          <tr><td><code>BIKE_MB_AI_USE_MOCK_PROVIDERS</code></td><td><code>0</code></td><td><code>ai-framework-test</code></td><td>用本地延时模拟 STT / LLM / TTS，不访问真实云服务。</td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
           <article class="card">
             <h3>setup() 顺序</h3>
-            <p><code>Serial.begin</code> → <code>BoardSupport_Init</code> → <code>BikeMbAudioPrompts_Init</code> → <code>BikeMbAudioSelfTest_Init</code> → <code>BikeMbVoiceCommands_Init</code> → <code>LvglPort_Init</code> → <code>DashboardApp_Init</code> → <code>DashboardApp_SetModeChangedCallback</code></p>
+            <p><code>Serial.begin</code> → <code>BoardSupport_Init</code> → AI 开关打开时初始化 <code>AiAssistant / WifiService / AiButton</code> → 音频/语音测试模块 → <code>LvglPort_Init</code> → <code>DashboardApp_Init</code></p>
           </article>
           <article class="card">
             <h3>loop() 顺序</h3>
-            <p><code>LvglPort_Tick</code> → <code>DashboardApp_Tick</code> → <code>LvglPort_Run</code> → <code>BikeMbAudioSelfTest_Tick</code> → <code>HandleAudioSelfTestCommand</code> → <code>HandleVoiceCommand</code></p>
+            <p>AI 开关打开时 <code>BikeMbAiButton_Tick(now)</code> → <code>LvglPort_Tick</code> → <code>DashboardApp_Tick</code>（复制 AI snapshot）→ <code>LvglPort_Run</code> → 音频/语音命令路由</p>
           </article>
         </div>
         <table style="margin-top:14px">
@@ -662,10 +669,56 @@
           <tr><td>App</td><td><code>dashboard_app.h/cpp</code></td><td><code>DashboardApp_Init</code><br><code>DashboardApp_Tick</code><br><code>DashboardApp_NextPage</code><br><code>DashboardApp_PreviousPage</code><br><code>DashboardApp_SetModeChangedCallback</code></td><td>UI 对外边界。</td></tr>
           <tr><td>View Adapter</td><td><code>dashboard_view.h/cpp</code></td><td><code>DashboardView_Create</code><br><code>DashboardView_Update</code></td><td>C++ 和 C UI core 的适配层。</td></tr>
           <tr><td>View Core</td><td><code>dashboard_view_core.h/c</code></td><td><code>BikeMbDashboardView_Create</code><br><code>BikeMbDashboardView_Update</code><br><code>BikeMbDashboardView_NextPage</code><br><code>BikeMbDashboardView_PreviousPage</code></td><td>页面容器、当前页状态、触摸手势路由。</td></tr>
-          <tr><td>Pages</td><td><code>dashboard_pages.h/c</code></td><td><code>BikeMbDashboardPages_Create</code><br><code>BikeMbDashboardPages_Update</code><br><code>mode_click_event_cb</code></td><td>三个页面的 LVGL object tree 和档位点击。</td></tr>
+          <tr><td>Pages</td><td><code>dashboard_pages.h/c</code></td><td><code>BikeMbDashboardPages_Create</code><br><code>BikeMbDashboardPages_Update</code><br><code>mode_click_event_cb</code></td><td>首页、独立 AI 页面、详情页的 LVGL object tree 和档位点击。</td></tr>
           <tr><td>Style</td><td><code>dashboard_ui_style.h/c</code></td><td><code>BikeMbUi_MakeFixedLabel</code><br><code>BikeMbUi_SetLabelTextIfChanged</code></td><td>固定宽度 label、颜色、panel 样式。</td></tr>
+          <tr><td>AI UI State</td><td><code>ai_assistant_ui_state.h/cpp</code></td><td><code>BikeMbAiUiState_FromSnapshot</code></td><td>把并发安全 snapshot 映射为 chip、overlay、full-page 语义和安全文案。</td></tr>
         </table>
-        <div class="callout good">页面不会按时间自动跳转。旧的 <code>activePage = (now / 5000) % 3</code> 已删除。页面只会因触摸、串口自检命令或语音命令而变化。</div>
+        <div class="callout good">页面不会按时间自动跳转。AI、Wi-Fi 和 cloud task 不调用 LVGL；<code>DashboardApp_Tick()</code> 只复制 <code>BikeMbAiSnapshot</code> 并在 UI 线程完成映射与渲染。</div>
+      </section>
+
+      <section id="ai-assistant">
+        <div class="section-head">
+          <h2>AI 助手控制框架</h2>
+          <p>当前已实现控制面、输入、snapshot/UI 映射和异步 Wi-Fi；音频与真实云 provider 仍未接入。</p>
+        </div>
+        <div class="grid two">
+          <article class="card">
+            <h3>当前已实现</h3>
+            <p><code>ai_button</code>、纯 <code>ai_state_machine</code>、<code>bikemb_ai</code> command queue、<code>bikemb_cloud</code> mock worker、<code>bikemb_wifi</code> 和 dashboard AI 状态映射。</p>
+          </article>
+          <article class="card">
+            <h3>仍是计划能力</h3>
+            <p><code>AudioSession</code>、真实麦克风 clip、STT / DeepSeek / TTS adapter、TTS PCM 播放、HTTPS MP3、Music Service 和点歌 resolver。</p>
+          </article>
+        </div>
+        <table style="margin-top:14px">
+          <tr><th>模块</th><th>关键接口</th><th>所有权 / 数据边界</th></tr>
+          <tr><td><code>input/ai_button_logic.*</code></td><td><code>BikeMbAiButtonLogic_Init/Update</code></td><td>纯启动保护和消抖 reducer。</td></tr>
+          <tr><td><code>input/ai_button.*</code></td><td><code>BikeMbAiButton_Init/Tick</code></td><td>读取 GPIO0，只产生 press/release。</td></tr>
+          <tr><td><code>ai/ai_state_machine.*</code></td><td><code>BikeMbAiStateMachine_Init/Dispatch</code></td><td>request ID、deadline、取消和状态转移的唯一 reducer。</td></tr>
+          <tr><td><code>ai/ai_assistant.*</code></td><td><code>Init</code> / <code>Cancel</code> / <code>GetSnapshot</code></td><td><code>bikemb_ai</code> 是状态唯一写入者；8 项队列，20 ms tick。</td></tr>
+          <tr><td><code>ai/cloud_worker.*</code></td><td><code>Init</code> / <code>Submit</code> / <code>CancelBefore</code></td><td><code>bikemb_cloud</code> 当前只模拟阶段延时，结果携带 request ID。</td></tr>
+          <tr><td><code>network/wifi_service*.*</code></td><td><code>BikeMbWifiService_Init</code> / core <code>Update</code></td><td><code>bikemb_wifi</code> 后台连接，10 s 重试，只发布 connected 状态。</td></tr>
+          <tr><td><code>app/ai_assistant_ui_state.*</code></td><td><code>BikeMbAiUiState_FromSnapshot</code></td><td>把内部状态映射成 dashboard 安全文案和展示层级。</td></tr>
+        </table>
+        <div class="flow" style="margin-top:14px">
+          <div class="node"><b>BOOT / GPIO0</b><span>3000 ms guard<br>50 ms release<br>30 ms debounce</span></div>
+          <div class="node"><b>bikemb_ai</b><span>queue → reducer → snapshot/effects</span></div>
+          <div class="node"><b>bikemb_cloud</b><span>mock STT → LLM → TTS</span></div>
+          <div class="node"><b>DashboardApp</b><span>copy snapshot → AI UI state</span></div>
+          <div class="node"><b>LVGL Pages</b><span>chip / overlay / full-page semantics</span></div>
+        </div>
+        <div class="grid two" style="margin-top:14px">
+          <article class="card">
+            <h3>取消与旧结果隔离</h3>
+            <p>取消或忙态重新按键会递增有效 <code>requestId</code>，并调用 <code>BikeMbCloudWorker_CancelBefore(...)</code>。旧 callback 即使晚到也不能改写新状态。</p>
+          </article>
+          <article class="card">
+            <h3>BOOT 安全边界</h3>
+            <p>GPIO0 仍是 ESP32-S3 启动 strap。3 秒延时只阻止应用层误触发；按住 BOOT 上电或复位仍可能进入 ROM 下载模式。</p>
+          </article>
+        </div>
+        <div class="callout">状态流转现在使用 mock capture 和 mock provider。它能验证任务、队列、取消和 UI 反馈，但不能证明麦克风、TLS、云 API、TTS 播放或音乐链路可用。</div>
       </section>
 
       <section id="audio-pins">
@@ -750,6 +803,7 @@
           <tr><td><code>esp32-s3-touch-lcd-1-85c-audio-self-test</code></td><td>Arduino</td><td>音频输入/输出硬件验证。</td><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST=1</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-mode-prompts-test</code></td><td>Arduino</td><td>点击档位后播放预录语音。</td><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS=1</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-voice-direct-test</code></td><td>Arduino</td><td>ESP-SR 直接识别翻页。</td><td><code>board_build.partitions = esp_sr_16.csv</code><br><code>BIKE_MB_ENABLE_VOICE_COMMANDS=1</code><br><code>extra_scripts = pre:../../../tools/pio_upload_srmodels.py</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-framework-test</code></td><td>Arduino</td><td>BOOT 键、AI 状态机、UI、Wi-Fi 和 mock worker 验证。</td><td><code>BIKE_MB_ENABLE_AI_ASSISTANT=1</code><br><code>BIKE_MB_AI_USE_MOCK_PROVIDERS=1</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF</td><td>Runtime/Event/Service 迁移构建。</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME=1</code></td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
@@ -839,6 +893,11 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>test_voice_commands_contract.py</code></td><td>ESP-SR API、命令词、模型烧录脚本、语音环境分区配置。</td></tr>
           <tr><td><code>test_dashboard_no_auto_page_contract.py</code></td><td>防止 demo metrics 再引入自动翻页。</td></tr>
           <tr><td><code>test_runtime_contract.py</code></td><td>ESP-IDF runtime/event/service 骨架。</td></tr>
+          <tr><td><code>test_ai_framework.py</code></td><td>AI 配置、BOOT reducer、状态机、UI 映射、task/queue 所有权和 main feature gate。</td></tr>
+          <tr><td><code>test_dashboard_ai_ui_contract.py</code></td><td>独立 AI 页面只读取 UI-facing snapshot，不直接调用 cloud、audio 或 Assistant 命令。</td></tr>
+          <tr><td><code>test_wifi_service_contract.py</code></td><td>异步 Wi-Fi 初始化、密钥边界、状态发布和重试 reducer。</td></tr>
+          <tr><td><code>ai_button_logic_test.cpp</code></td><td>3000 ms guard、50 ms 释放解锁、30 ms 消抖。</td></tr>
+          <tr><td><code>ai_state_machine_test.cpp</code></td><td>短录音、10 s 上限、15 s deadline、取消和旧 request 丢弃。</td></tr>
         </table>
         <pre><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1</code></pre>
       </section>
@@ -857,11 +916,31 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
             <h3>语音命令能力</h3>
             <p><code>voice-direct-test</code> 没有唤醒词，可能误识别；当前 Arduino ESP-SR 路径也还没有启用中文命令识别。</p>
           </article>
+          <article class="card">
+            <h3>AI 仍是 mock 链路</h3>
+            <p>当前 capture 和 STT / LLM / TTS effect 只模拟阶段流转，真实麦克风、HTTPS、DeepSeek 和语音播放尚未接入。</p>
+          </article>
+          <article class="card">
+            <h3>AI 页面暂时只读</h3>
+            <p>dashboard 第二页已经显示网络、状态、提示、波形和状态环；取消、重试、停止动作尚未接到 Assistant 命令接口。</p>
+          </article>
+          <article class="card">
+            <h3>AudioSession 尚未落地</h3>
+            <p>音频自检、档位播报和 ESP-SR 仍分别初始化 I2S0/codec；AI 音频接入前必须先建立唯一所有者。</p>
+          </article>
+          <article class="card">
+            <h3>音乐路径未实现</h3>
+            <p>HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 仍属于目标架构。</p>
+          </article>
+          <article class="card">
+            <h3>ESP-IDF 尚未接入 AI</h3>
+            <p>ESP-IDF Runtime/Event/Service 已存在，但 AI、Wi-Fi、音频和语音实验仍以 Arduino 路径为主。</p>
+          </article>
         </div>
       </section>
 
       <div class="footer">
-        BikeMB architecture HTML. Source summary mirrors <code>docs/software-architecture.md</code>.
+        BikeMB architecture HTML. Current implementation map mirrors <code>docs/software-architecture.md</code>; target constraints live in <code>docs/architecture/</code>.
       </div>
     </main>
   </div>

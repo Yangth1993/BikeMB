@@ -1,6 +1,6 @@
 # BikeMB 固件架构说明
 
-本文是 `src/firmware/bikemb` 的当前代码地图。目标不是解释概念，而是让你能快速找到“某个功能在哪个文件、哪个函数里实现”。
+本文是 `src/firmware/bikemb` 的当前代码地图。目标不是解释概念，而是让你能快速找到“某个功能在哪个文件、哪个函数里实现”。系统级约束和目标架构分别维护在 `docs/architecture/`；本文只把已经进入源码的能力标为“当前实现”，尚未落地的能力明确标为“计划中”。
 
 ## 当前运行路径
 
@@ -9,7 +9,7 @@
 - 默认路径：`PlatformIO + Arduino`，入口在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `setup()` / `loop()`。
 - 迁移路径：`PlatformIO + ESP-IDF`，入口也在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `app_main()`。
 
-目前已经上板验证的 UI、触摸、音频自检、档位播报、直接语音识别，都在 Arduino 路径上。ESP-IDF 路径已经有 Runtime/Event/Service 骨架，但音频和语音还没有迁过去。
+目前已经上板验证的 UI、触摸、音频自检、档位播报、直接语音识别，都在 Arduino 路径上。AI 助手的控制框架也已进入 Arduino 源码，包括 BOOT 键输入、纯状态机、控制 task、mock cloud worker、snapshot 到 UI 的映射和异步 Wi-Fi service；真实录音、STT/DeepSeek/TTS、TTS 播放和音乐流仍是计划能力。ESP-IDF 路径已有 Runtime/Event/Service 骨架，但 AI、音频和语音没有接入该运行路径。
 
 ## 总体模块图
 
@@ -50,12 +50,24 @@ flowchart TB
     METRICSVC["services/metrics_service.cpp<br/>MetricsService_*"]
   end
 
+  subgraph AI["AI 助手框架（当前为 mock 链路）"]
+    AIBUTTON["input/ai_button*<br/>BOOT/GPIO0 启动保护 + 消抖"]
+    ASSISTANT["ai/ai_assistant.cpp/h<br/>bikemb_ai + command queue + snapshot"]
+    AISTATE["ai/ai_state_machine.cpp/h<br/>纯状态 reducer + effects"]
+    CLOUD["ai/cloud_worker.cpp/h<br/>bikemb_cloud mock stage worker"]
+    AIVIEW["app/ai_assistant_ui_state.cpp/h<br/>snapshot -> dashboard AI state"]
+    WIFI["network/wifi_service*.cpp/h<br/>bikemb_wifi + 10 s reconnect"]
+  end
+
   MAIN --> BSP
   MAIN --> LVGLPORT
   MAIN --> DASHAPP
   MAIN --> PROMPTS
   MAIN --> SELFTEST
   MAIN --> VOICECMD
+  MAIN --> AIBUTTON
+  MAIN --> ASSISTANT
+  MAIN --> WIFI
 
   DASHAPP --> DASHVIEW
   DASHVIEW --> DASHCORE
@@ -69,6 +81,12 @@ flowchart TB
   SELFTEST --> I2C
   VOICECMD --> I2C
   VOICECMD --> SRMODELS
+  AIBUTTON --> ASSISTANT
+  ASSISTANT --> AISTATE
+  ASSISTANT --> CLOUD
+  WIFI --> ASSISTANT
+  ASSISTANT --> AIVIEW
+  AIVIEW --> DASHAPP
 
   MAIN --> RUNTIME
   RUNTIME --> UISVC
@@ -89,28 +107,32 @@ flowchart TB
 | `BIKE_MB_ENABLE_AUDIO_SELF_TEST` | `0` | `esp32-s3-touch-lcd-1-85c-audio-self-test` | 开启 beep、麦克风 RMS、串口 `n/p` 模拟翻页。 |
 | `BIKE_MB_ENABLE_AUDIO_PROMPTS` | `0` | `esp32-s3-touch-lcd-1-85c-mode-prompts-test` | 开启档位点击预录语音播报。 |
 | `BIKE_MB_ENABLE_VOICE_COMMANDS` | `0` | `esp32-s3-touch-lcd-1-85c-voice-direct-test` | 开启 ESP-SR 直接语音命令识别。 |
+| `BIKE_MB_ENABLE_AI_ASSISTANT` | `0` | `esp32-s3-touch-lcd-1-85c-ai-framework-test` | 开启 AI 控制框架、BOOT 键、mock cloud worker 和 Wi-Fi service。 |
+| `BIKE_MB_AI_USE_MOCK_PROVIDERS` | `0` | `esp32-s3-touch-lcd-1-85c-ai-framework-test` | 只运行本地阶段延时，不访问真实 STT/LLM/TTS。 |
 
 ### `setup()` 顺序
 
 1. `Serial.begin(115200)`：打开串口。
 2. `BoardSupport_Init()`：板级初始化，包含 LCD/I2C/背光等基础链路。
-3. `BikeMbAudioPrompts_Init()`：档位播报初始化；默认是空函数。
-4. `BikeMbAudioSelfTest_Init()`：音频自检初始化；默认是空函数。
-5. `BikeMbVoiceCommands_Init()`：语音识别初始化；默认是空函数。
-6. `LvglPort_Init()`：初始化 LVGL 显示和 CST816 触摸输入。
-7. `DashboardApp_Init()`：初始化指标服务并创建 dashboard UI。
-8. `DashboardApp_SetModeChangedCallback(HandleModeChanged)`：把 UI 档位点击接到音频播报入口。
+3. AI 开关打开时依次调用 `BikeMbAiAssistant_Init()`、`BikeMbWifiService_Init()`、`BikeMbAiButton_Init()`；默认环境不创建这些 task。
+4. `BikeMbAudioPrompts_Init()`：档位播报初始化；默认是空函数。
+5. `BikeMbAudioSelfTest_Init()`：音频自检初始化；默认是空函数。
+6. `BikeMbVoiceCommands_Init()`：语音识别初始化；默认是空函数。
+7. `LvglPort_Init()`：初始化 LVGL 显示和 CST816 触摸输入。
+8. `DashboardApp_Init()`：初始化指标服务并创建 dashboard UI。
+9. `DashboardApp_SetModeChangedCallback(HandleModeChanged)`：把 UI 档位点击接到音频播报入口。
 
 ### `loop()` 顺序
 
 1. 计算 `now` 和 `deltaMs`。
-2. `LvglPort_Tick(deltaMs)`：推进 LVGL tick。
-3. `DashboardApp_Tick(now)`：更新 demo 数据和 UI。
-4. `DashboardApp_SetRenderWorkMs(LvglPort_Run())`：运行 `lv_timer_handler()`，并记录渲染耗时。
-5. `BikeMbAudioSelfTest_Tick(now)`：音频自检环境下处理串口命令和麦克风 RMS 打印。
-6. `HandleAudioSelfTestCommand()`：把音频自检的 `n/p` 命令路由到 dashboard 翻页。
-7. `HandleVoiceCommand()`：把语音识别结果路由到 dashboard 翻页。
-8. `delay(5)`。
+2. AI 开关打开时调用 `BikeMbAiButton_Tick(now)`；这里只读取 GPIO 和推进消抖，不等待网络。
+3. `LvglPort_Tick(deltaMs)`：推进 LVGL tick。
+4. `DashboardApp_Tick(now)`：更新 demo 数据，复制 AI snapshot，并刷新 UI。
+5. `DashboardApp_SetRenderWorkMs(LvglPort_Run())`：运行 `lv_timer_handler()`，并记录渲染耗时。
+6. `BikeMbAudioSelfTest_Tick(now)`：音频自检环境下处理串口命令和麦克风 RMS 打印。
+7. `HandleAudioSelfTestCommand()`：把音频自检的 `n/p` 命令路由到 dashboard 翻页。
+8. `HandleVoiceCommand()`：把语音识别结果路由到 dashboard 翻页。
+9. `delay(5)`。
 
 ### `main.cpp` 里的命令路由函数
 
@@ -145,7 +167,7 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 | --- | --- |
 | `BikeMbDashboardMetrics` | C struct，承载所有要显示到 UI 的数据。 |
 | `BikeMbDashboardModeChangedCallback` | 档位变化 callback 类型：`void (*)(uint8_t mode_index)`。 |
-| `BikeMbDashboardView_Create()` | 创建 screen、三个页面容器、page dots 和子控件。 |
+| `BikeMbDashboardView_Create()` | 创建 screen、首页/AI/详情三个页面容器、page dots 和子控件。 |
 | `BikeMbDashboardView_Update(...)` | 更新 label、波形，并轮询触摸手势。 |
 | `BikeMbDashboardView_NextPage()` | 显示下一页。 |
 | `BikeMbDashboardView_PreviousPage()` | 显示上一页。 |
@@ -162,18 +184,83 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 
 | 函数 | 作用 |
 | --- | --- |
-| `BikeMbDashboardPages_Create(...)` | 创建首页、速率波形页、详细信息页。 |
+| `BikeMbDashboardPages_Create(...)` | 创建首页、独立 AI 页面、详细信息页。 |
 | `BikeMbDashboardPages_Update(...)` | 更新所有页面上的文字和波形点。 |
 | `BikeMbDashboardPages_SetModeChangedCallback(...)` | 保存档位变化 callback。 |
 | `mode_click_event_cb(...)` | 私有 LVGL 点击事件：`ECO -> TRAIL -> BOOST -> ECO`，更新 label，并发出 mode index。 |
 | `BikeMbUi_MakeFixedLabel(...)` | 创建固定宽度 label，减少圆屏 UI 文字溢出。 |
 | `BikeMbUi_SetLabelTextIfChanged(...)` | 只有文字变化时才更新 LVGL label。 |
 
+AI 状态沿用同一 UI 边界：`DashboardApp_Tick()` 复制 `BikeMbAiSnapshot`，通过 `BikeMbAiUiState_FromSnapshot(...)` 转为不含 provider 细节的 `BikeMbDashboardAiUiState`，再随 metrics 传给 View/Page。后台 AI、Wi-Fi 和 cloud task 不直接调用 LVGL。
+
 页面不会再按时间自动跳转。旧的 `activePage = (now / 5000) % 3` 已经删除。当前页面只会因为这些入口变化：
 
 - CST816 左右滑动手势。
 - 音频自检环境下串口 `n/p`。
 - 直接语音识别环境下识别到上一页/下一页。
+
+## AI 助手控制框架
+
+### 当前实现状态
+
+| 能力 | 当前状态 | 说明 |
+| --- | --- | --- |
+| 配置与密钥边界 | 已实现 | AI 默认关闭；真实密钥只允许放入 Git 忽略的 `ai_secrets.local.h`。 |
+| BOOT/AI 键 | 已实现，待完整上板矩阵 | `GPIO0` 低电平有效；启动 3000 ms 内忽略，连续释放 50 ms 后解锁，运行边沿消抖 30 ms。 |
+| AI 状态机 | 已实现并有 host test | 管理 request ID、15 s deadline、取消、短录音、10 s 上限、旧结果丢弃和 snapshot。 |
+| AI control task | 已实现 | `bikemb_ai` 使用 8 项命令队列，每 20 ms 产生一次内部 tick。 |
+| Cloud worker | 已实现 mock | `bikemb_cloud` 只模拟 STT/LLM/TTS 阶段延时，不发送真实 HTTPS 请求。 |
+| Wi-Fi service | 已实现基础连接 | `bikemb_wifi` 后台轮询，每 10 s 重试；只向 AI Assistant 发布连接状态。 |
+| AI UI 状态与独立页面 | 已实现展示 | snapshot 映射为 chip、mini overlay 或 full-page 语义；dashboard 第二页显示网络、AI 状态、操作提示、动态波形和状态环。 |
+| Audio Session / 真实录音 | 计划中 | 当前 effect 只输出 mock 诊断，不初始化 I2S 或 codec。 |
+| 真实 STT / DeepSeek / TTS | 计划中 | provider adapter 和 HTTPS transport 尚未进入源码。 |
+| MP3 stream / Music Service | 计划中 | 解码器选择、流播放器和点歌 resolver 尚未实现。 |
+
+### 模块与接口
+
+| 模块 | 关键接口 | 当前职责 |
+| --- | --- | --- |
+| `input/ai_button_logic.*` | `BikeMbAiButtonLogic_Init/Update` | 纯启动保护和消抖 reducer，可由 host test 编译。 |
+| `input/ai_button.*` | `BikeMbAiButton_Init/Tick` | 读取 `GPIO0`，把稳定边沿转成 Assistant press/release 命令。 |
+| `ai/ai_state_machine.*` | `BikeMbAiStateMachine_Init/Dispatch` | 唯一业务状态 reducer，返回 audio/cloud effect bitmask。 |
+| `ai/ai_assistant.*` | `Init`、`OnButtonPressed/Released`、`Cancel`、`SetWifiConnected`、`GetSnapshot` | 拥有 command queue、state machine 和并发安全 snapshot。 |
+| `ai/cloud_worker.*` | `Init`、`Submit`、`CancelBefore` | 独立 worker；只接受带 `requestId/deadlineMs` 的 stage job。 |
+| `network/wifi_service_core.*` | `Init/Update` | 与 Arduino Wi-Fi API 解耦的连接/重试 reducer。 |
+| `network/wifi_service.*` | `BikeMbWifiService_Init` | 后台连接 Wi-Fi，把 connected/disconnected 事件投给 Assistant。 |
+| `app/ai_assistant_ui_state.*` | `BikeMbAiUiState_FromSnapshot` | 把 AI 内部状态压缩为 UI 可显示状态、文案和操作提示。 |
+
+### 当前数据流
+
+```mermaid
+sequenceDiagram
+  participant Loop as Arduino loop
+  participant Button as AiButton
+  participant Ai as bikemb_ai
+  participant State as AiStateMachine
+  participant Cloud as bikemb_cloud (mock)
+  participant Wifi as bikemb_wifi
+  participant App as DashboardApp/LVGL
+
+  Loop->>Button: Tick(now), read GPIO0
+  Button->>Ai: PRESS / RELEASE command
+  Wifi->>Ai: SET_WIFI event
+  Ai->>State: Dispatch(event)
+  State-->>Ai: new snapshot + effect mask
+  Ai->>Cloud: STT / LLM / TTS job(requestId, deadline)
+  Cloud-->>Ai: tagged mock result
+  App->>Ai: GetSnapshot(copy)
+  App->>App: map snapshot to dashboard AI UI state
+```
+
+`bikemb_ai` 是状态唯一写入者。Cloud/Wi-Fi/Button 只投递事件；UI 只复制 snapshot。取消会递增有效 `requestId` 并调用 `BikeMbCloudWorker_CancelBefore(...)`，因此已经排队或晚到的旧结果不能覆盖新状态。
+
+### BOOT 键安全边界
+
+- `Key1/BOOT` 连接 `GPIO0`，板载 `10 kΩ` 上拉，按下为低电平。
+- 前 `3000 ms` 不产生 AI 事件；保护期后必须先连续释放 `50 ms` 才进入 Armed。
+- Armed 后按下/松开分别稳定 `30 ms` 才产生一次事件。
+- GPIO0 仍是 ESP32-S3 启动 strap。按住 BOOT 上电或复位仍可能进入 ROM 下载模式；应用层延时不能消除该行为。
+- 当前 OpenSpec 只确认了原理图，完整上板安全矩阵仍应在对应任务完成后勾选。
 
 ## 音频硬件引脚
 
@@ -342,6 +429,7 @@ sequenceDiagram
 | `esp32-s3-touch-lcd-1-85c-audio-self-test` | Arduino | 音频输入/输出硬件验证。 | `BIKE_MB_ENABLE_AUDIO_SELF_TEST=1` |
 | `esp32-s3-touch-lcd-1-85c-mode-prompts-test` | Arduino | 点击档位后播放预录语音。 | `BIKE_MB_ENABLE_AUDIO_PROMPTS=1` |
 | `esp32-s3-touch-lcd-1-85c-voice-direct-test` | Arduino | ESP-SR 直接识别上一页/下一页。 | `board_build.partitions = esp_sr_16.csv`，`BIKE_MB_ENABLE_VOICE_COMMANDS=1`，`extra_scripts = pre:../../../tools/pio_upload_srmodels.py` |
+| `esp32-s3-touch-lcd-1-85c-ai-framework-test` | Arduino | BOOT 键、AI 状态机、UI 映射、Wi-Fi 和 mock cloud worker 集成验证。 | `BIKE_MB_ENABLE_AI_ASSISTANT=1`，`BIKE_MB_AI_USE_MOCK_PROVIDERS=1` |
 | `esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF | Runtime/Event/Service 迁移构建。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1` |
 
 ### 默认分区
@@ -464,6 +552,14 @@ $env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
 py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-85c-voice-direct-test -t upload
 ```
 
+构建 AI mock framework 固件：
+
+```powershell
+$env:PLATFORMIO_CORE_DIR = (Resolve-Path '.pio-home').Path
+$env:PLATFORMIO_SETTING_ENABLE_TELEMETRY = 'No'
+py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-85c-ai-framework-test
+```
+
 ## ESP-IDF Runtime 骨架
 
 文件：
@@ -498,6 +594,13 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `test_lvgl_port_contract.py` | LVGL display/touch port 边界。 |
 | `test_lvgl_simulator_contract.py` | PC simulator 与固件共享 dashboard UI 源码。 |
 | `test_runtime_contract.py` | ESP-IDF runtime/event/service 骨架。 |
+| `test_ai_framework.py` | AI 配置、BOOT 键 reducer、AI 状态机、UI 映射、task/queue 所有权和 main feature gate。 |
+| `test_dashboard_ai_ui_contract.py` | Dashboard 只从 snapshot 派生 AI 页面，不直接依赖 cloud/audio/Assistant 命令接口。 |
+| `test_wifi_service_contract.py` | Wi-Fi service 不阻塞启动、配置隔离、重连 reducer 和 Assistant 状态发布。 |
+| `ai_button_logic_test.cpp` | 3000 ms 启动保护、50 ms 释放解锁和 30 ms 消抖。 |
+| `ai_state_machine_test.cpp` | 短录音、10 s 上限、15 s deadline、取消、忙态替换和旧 request 丢弃。 |
+| `ai_assistant_ui_state_test.cpp` | AI snapshot 到 dashboard visual/surface/text 的纯映射。 |
+| `wifi_service_core_test.cpp` | 未配置、连接、断开和 10 s 重试动作。 |
 
 运行：
 
@@ -510,4 +613,9 @@ powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1
 - 语音输出和语音识别目前是两个测试环境，不建议同时打开。
 - `voice-direct-test` 没有唤醒词，环境噪声可能导致误识别，所以不适合作为日常骑行 UI 固件。
 - 当前 Arduino ESP-SR 路径还没有启用中文命令识别。
-- ESP-IDF runtime 已经有结构，但音频/语音还没有迁移到这个运行模型。
+- AI framework 环境目前使用 mock capture 和 mock STT/LLM/TTS；状态流转成功不代表真实云链路已经可用。
+- `AudioSession` 尚未实现。音频自检、档位播报和 ESP-SR 仍各自初始化 I2S0/codec，不能与 AI 音频路径直接并行启用。
+- 独立 AI 页面已经进入 dashboard 第二页，但目前是只读展示；取消、重试和停止控件尚未连接到 Assistant 命令接口，并且仍需上板验证布局和交互。
+- Wi-Fi service 已有异步连接与 10 s 重试，但真实 provider 的 TLS 证书、HTTP 超时和密钥日志脱敏尚未实现。
+- HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 尚未实现。
+- ESP-IDF runtime 已经有结构，但 AI、音频和语音还没有迁移到这个运行模型。
