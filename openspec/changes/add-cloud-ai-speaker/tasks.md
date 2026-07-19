@@ -23,7 +23,7 @@
 - [ ] Migrate Audio Prompts to `AudioSession` and re-verify asynchronous latest-request behavior.
 - [ ] Keep Voice Commands compile-time exclusive until it has its own `AudioSession` migration test.
 - [ ] Validate 10-second 16 kHz mono capture into a bounded PSRAM clip.
-- [ ] Add asynchronous `WifiService`; verify boot and dashboard do not wait for Wi-Fi.
+- [x] Add asynchronous `WifiService`; verify boot and dashboard do not wait for Wi-Fi.
 - [ ] Add `qwen3-asr-flash` adapter spike using streamed Base64 WAV JSON without duplicating the full clip.
 - [ ] Add DeepSeek adapter with response-length limits and redacted logs.
 - [ ] Add `cosyvoice-v3-flash` HTTP/SSE adapter with chunked 16 kHz mono PCM playback.

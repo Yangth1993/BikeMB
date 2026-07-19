@@ -10,6 +10,7 @@
 #include "app/dashboard_app.h"
 #include "app/display_diagnostics.h"
 #include "input/ai_button.h"
+#include "network/wifi_service.h"
 #include "platform/board_support.h"
 #include "platform/bike_platform.h"
 #include "platform/lvgl_port.h"
@@ -108,6 +109,7 @@ void setup() {
   BoardSupport_Init();
 #if BIKE_MB_ENABLE_AI_ASSISTANT
   BikeMbAiAssistant_Init();
+  BikeMbWifiService_Init();
   BikeMbAiButton_Init();
 #endif
   BikeMbAudioPrompts_Init();

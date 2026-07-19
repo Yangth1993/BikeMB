@@ -26,6 +26,8 @@ set(BIKEMB_SRCS
     input/ai_button.cpp
     input/ai_button_logic.cpp
     main.cpp
+    network/wifi_service.cpp
+    network/wifi_service_core.cpp
     platform/board_support.cpp
     platform/lvgl_port.cpp
     runtime/bike_runtime.cpp

@@ -68,6 +68,13 @@ def test_native_ai_reducers():
             PROJECT_ROOT / "tools" / "tests" / "ai_assistant_ui_state_test.cpp",
         ],
     )
+    compile_and_run(
+        "wifi_service_core_test",
+        [
+            FIRMWARE_ROOT / "src" / "network" / "wifi_service_core.cpp",
+            PROJECT_ROOT / "tools" / "tests" / "wifi_service_core_test.cpp",
+        ],
+    )
 
 
 def test_runtime_ownership_contract():
