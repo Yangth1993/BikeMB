@@ -200,7 +200,7 @@ Horizontal page switching must remain available in every state.
 
 ## Responses from other pages
 
-AI may be triggered while the rider is on `Home`, `RideDetails`, or a settings page. The response must not destroy the current page context unless the rider explicitly opens the complete AI page.
+AI may be triggered while the rider is on `Home`, `RideDetails`, or a settings page. Passive AI status updates must not destroy the current page context, but the physical recording/AI button is an explicit request to open the complete AI page.
 
 ### Response surfaces
 
@@ -210,7 +210,7 @@ Use three UI surfaces, chosen by severity and duration:
 | --- | --- | --- | --- |
 | `AiStatusChip` | Short acknowledgement, offline, cancelled | `1-2 s` | No |
 | `AiMiniOverlay` | Listening, sending, thinking from another page | Until state changes or user cancels | No, but captures center tap |
-| `AiFullPage` | Dedicated AI page or long speaking/music state | Until rider leaves | Yes, by navigation only |
+| `AiFullPage` | Dedicated AI page, physical recording/AI button, or long speaking/music state | Until rider leaves | Yes, by navigation only |
 
 ### AiStatusChip
 
@@ -268,19 +268,20 @@ Rules:
 Navigate to the complete AI page when:
 
 - The rider switches to page 2 manually.
+- The rider presses the physical recording/AI button from any dashboard page.
 - The current state needs more clarity than the mini overlay can provide.
 - Speaking or music playback is expected to continue and the rider opens AI controls.
 
-Do not auto-jump from `Home` to `AiFullPage` for a short `Listening` or `Thinking` state. Auto-jump would make the speed page unreliable while riding.
+Do not auto-jump from `Home` to `AiFullPage` for passive background status changes. The physical recording/AI button is explicit navigation and should open `AiFullPage` before recording starts.
 
 ## Cross-page trigger behavior
 
 | Current page | Trigger | Immediate UI | Next state |
 | --- | --- | --- | --- |
-| `Home` | AI button/tap gesture | `AiMiniOverlay` below speed | Return to unchanged `Home` when done |
-| `RideDetails` | AI button/tap gesture | `AiMiniOverlay` over lower metric area | Return to unchanged details when done |
-| `SettingsList` | AI trigger | `AiStatusChip` with `Unavailable here` or open full page only if explicit | Stay in settings |
-| `AboutDevice` | AI trigger | `AiStatusChip` with `Unavailable here` | Stay in detail page |
+| `Home` | Physical recording/AI button | `AiFullPage` / `Listening` | Stay on `AiAssistant` until rider leaves |
+| `RideDetails` | Physical recording/AI button | `AiFullPage` / `Listening` | Stay on `AiAssistant` until rider leaves |
+| `SettingsList` | Physical recording/AI button | `AiFullPage` / `Listening` | Stay on `AiAssistant` until rider leaves |
+| `AboutDevice` | Physical recording/AI button | `AiFullPage` / `Listening` | Stay on `AiAssistant` until rider leaves |
 | `AiAssistant` | AI trigger | Full-page state transition | Stay on AI page |
 
 When the same physical button is used for dashboard page switching, AI trigger must require a different input pattern than normal paging. Do not overload the P0 page-switch button without a confirmed hardware interaction model.
@@ -332,4 +333,4 @@ Recommended `preferred_surface` values:
 - `MiniOverlay`
 - `FullPage`
 
-The state owner decides the preferred surface; the current screen may downgrade it for riding safety. For example, `Home` may show `MiniOverlay` instead of auto-navigating to `FullPage`.
+The state owner decides the preferred surface; the current screen may downgrade passive status updates for riding safety. A physical recording/AI button press remains explicit navigation to `FullPage`.

@@ -6,6 +6,7 @@
 
 void DashboardView_Create();
 void DashboardView_Update(const DemoMetrics &metrics, const BikeMbDashboardAiUiState &ai);
+void DashboardView_ShowAiPage();
 void DashboardView_NextPage();
 void DashboardView_PreviousPage();
 void DashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallback callback);

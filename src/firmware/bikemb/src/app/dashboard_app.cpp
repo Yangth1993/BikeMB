@@ -27,6 +27,10 @@ void DashboardApp_SetRenderWorkMs(uint32_t renderWorkMs) {
   g_renderWorkMs = renderWorkMs;
 }
 
+void DashboardApp_ShowAiPage() {
+  DashboardView_ShowAiPage();
+}
+
 void DashboardApp_NextPage() {
   DashboardView_NextPage();
 }

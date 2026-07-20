@@ -84,23 +84,22 @@ Rules:
 
 ## AI trigger from other pages
 
-AI can be invoked without moving to the full AI assistant page. This is for riding safety: the current riding page should remain stable unless the rider explicitly switches to the AI page.
+The physical recording/AI button is an explicit request to open the complete AI assistant page. When pressed from any dashboard page, the UI should switch to `AiAssistant` immediately and then show the active listening state.
 
 ```text
-Home / RideDetails
-  -> AI trigger
-  -> AiMiniOverlay
+Any current page
+  -> Recording/AI button
+  -> AiAssistant
+  -> Listening
   -> Done / cancelled / failed
-  -> Same page
 ```
 
 Rules:
 
-- `Home` keeps the speed value visible.
-- `RideDetails` keeps the top status and most important metric visible.
-- `SettingsList` and settings detail pages should show only a short unavailable/status chip unless a future explicit AI settings flow is designed.
-- The UI must not auto-jump from `Home` to `AiAssistant` for short listening/thinking states.
-- The rider can still manually switch to `AiAssistant` to see the complete AI page.
+- Passive AI status updates should not steal focus from the current page.
+- Pressing the physical recording/AI button should navigate to `AiAssistant` before recording begins.
+- After the AI state returns to idle, the rider can leave `AiAssistant` with normal page navigation.
+- `SettingsList` and settings detail pages should use a short status chip for passive AI status, but the physical recording/AI button should still open `AiAssistant`.
 
 AI response surfaces:
 
@@ -108,7 +107,7 @@ AI response surfaces:
 | --- | --- | --- |
 | `AiStatusChip` | Any page | Short status such as `Offline`, `Cancelled`, or `Failed` |
 | `AiMiniOverlay` | `Home`, `RideDetails` | Active listening/thinking/speaking without leaving the page |
-| `AiFullPage` | `AiAssistant` | Complete AI state and controls |
+| `AiFullPage` | `AiAssistant` or physical recording/AI button | Complete AI state and controls |
 
 ## Ride details page
 
@@ -189,9 +188,12 @@ stateDiagram-v2
   AiAssistant --> SettingsList: swipe up
   RideDetails --> SettingsList: swipe up
 
-  Home --> Home: AI trigger / AiMiniOverlay
-  RideDetails --> RideDetails: AI trigger / AiMiniOverlay
-  SettingsList --> SettingsList: AI trigger / AiStatusChip
+  Home --> AiAssistant: recording AI button
+  RideDetails --> AiAssistant: recording AI button
+  SettingsList --> AiAssistant: recording AI button
+  Accessories --> AiAssistant: recording AI button
+  AboutDevice --> AiAssistant: recording AI button
+  SettingsList --> SettingsList: passive AI status / AiStatusChip
 
   SettingsList --> Home: back to last_dashboard_page
   SettingsList --> Accessories: tap / select

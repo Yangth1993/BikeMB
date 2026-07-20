@@ -34,6 +34,7 @@ typedef struct BikeMbDashboardMetrics {
 
 void BikeMbDashboardView_Create(void);
 void BikeMbDashboardView_Update(const BikeMbDashboardMetrics *metrics);
+void BikeMbDashboardView_ShowAiPage(void);
 void BikeMbDashboardView_NextPage(void);
 void BikeMbDashboardView_PreviousPage(void);
 void BikeMbDashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallback callback);

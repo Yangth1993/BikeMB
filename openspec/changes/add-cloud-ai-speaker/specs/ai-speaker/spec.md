@@ -281,3 +281,14 @@
 - Given 一次语音问答已经结束或取消
 - When 系统释放该请求资源
 - Then 录音、转写文本和回答不应写入 Flash 或 Git 跟踪文件
+
+### Requirement: 录音键打开独立 AI 页面
+
+系统应在实体录音/AI 键触发录音请求前，先导航到独立 AI 助手页面。
+
+#### Scenario: 录音键打开独立 AI 页面
+
+- Given 用户位于任意当前 UI 页面
+- When 用户按下已解锁的 BOOT/AI 录音键
+- Then dashboard 应立即导航到独立 AI 页面
+- And AI 助手应为同一次按键启动录音请求

@@ -6,6 +6,10 @@ void DashboardView_Create() {
   BikeMbDashboardView_Create();
 }
 
+void DashboardView_ShowAiPage() {
+  BikeMbDashboardView_ShowAiPage();
+}
+
 void DashboardView_NextPage() {
   BikeMbDashboardView_NextPage();
 }

@@ -7,6 +7,7 @@
 
 enum {
   kScreenSize = 360,
+  kAiPageIndex = 1,
 };
 
 static lv_obj_t *g_pages[BIKE_MB_DASHBOARD_PAGE_COUNT];
@@ -47,6 +48,10 @@ static void update_visible_page(uint8_t page) {
 
 void BikeMbDashboardView_NextPage(void) {
   update_visible_page((uint8_t)((g_visible_page + 1) % BIKE_MB_DASHBOARD_PAGE_COUNT));
+}
+
+void BikeMbDashboardView_ShowAiPage(void) {
+  update_visible_page(kAiPageIndex);
 }
 
 void BikeMbDashboardView_PreviousPage(void) {

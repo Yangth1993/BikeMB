@@ -28,6 +28,7 @@
 - [x] Add DeepSeek adapter with response-length limits and redacted logs.
 - [x] Add `cosyvoice-v3-flash` HTTP/SSE adapter with chunked 16 kHz mono PCM playback.
 - [x] Add dashboard AI status indicator and dedicated AI page using snapshots only.
+- [x] Route the AI recording key to the dedicated AI page before recording starts.
 - [x] Add first board voice-assistant mock build with Wi-Fi, `AudioSession` capture, and local audible reply feedback.
 - [x] Add Bailian-only cloud voice build using Qwen ASR, Qwen Chat, and CosyVoice TTS.
 - [ ] Add HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, Arduino 3.x, and custom PCM sink checks.
