@@ -569,12 +569,12 @@
       <header class="hero" id="top">
         <span class="eyebrow">Firmware map for src/firmware/bikemb</span>
         <h2>BikeMB 当前固件框架说明</h2>
-        <p>这份 HTML 用来快速查当前代码路径：dashboard 如何渲染、BOOT 键如何进入 AI 状态机、后台 Wi-Fi 与 mock cloud worker 如何通信，以及真实音频和云 provider 还缺哪些模块。</p>
+        <p>这份 HTML 用来快速查当前代码路径：dashboard 如何渲染、BOOT 键如何进入 AI 状态机，以及录音、Qwen ASR、Qwen Chat、CosyVoice TTS 和 AudioSession 如何组成语音问答闭环。</p>
         <div class="hero-stats">
           <div class="stat"><strong>Arduino</strong><span>当前硬件验证主路径</span></div>
           <div class="stat"><strong>LVGL</strong><span>圆屏 UI 渲染框架</span></div>
           <div class="stat"><strong>FreeRTOS</strong><span>AI / Cloud / Wi-Fi tasks</span></div>
-          <div class="stat"><strong>Mock AI</strong><span>控制框架已进入源码</span></div>
+          <div class="stat"><strong>Voice AI</strong><span>真实与 mock 构建路径</span></div>
         </div>
       </header>
 
@@ -621,8 +621,8 @@
             <p>默认固件用 framework 默认分区；ESP-SR 测试环境使用 <code>esp_sr_16.csv</code> 并追加烧录 <code>srmodels.bin</code>。</p>
           </article>
           <article class="card">
-            <h3>AI 控制框架</h3>
-            <p><code>ai_assistant</code> 拥有状态和 snapshot；<code>ai_button</code>、<code>wifi_service</code> 与 <code>cloud_worker</code> 只投递带 request ID 的事件。</p>
+            <h3>AI 语音闭环</h3>
+            <p><code>ai_assistant</code> 拥有状态和 snapshot；<code>AudioSession</code> 管理录音/播放；<code>cloud_worker</code> 串联 Qwen ASR、Qwen Chat 和 CosyVoice。</p>
           </article>
         </div>
       </section>
@@ -638,7 +638,8 @@
           <tr><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST</code></td><td><code>0</code></td><td><code>audio-self-test</code></td><td>beep、麦克风 RMS、串口 <code>n/p</code> 模拟翻页。</td></tr>
           <tr><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS</code></td><td><code>0</code></td><td><code>mode-prompts-test</code></td><td>点击档位播放预录语音。</td></tr>
           <tr><td><code>BIKE_MB_ENABLE_VOICE_COMMANDS</code></td><td><code>0</code></td><td><code>voice-direct-test</code></td><td>ESP-SR 直接语音命令识别。</td></tr>
-          <tr><td><code>BIKE_MB_ENABLE_AI_ASSISTANT</code></td><td><code>0</code></td><td><code>ai-framework-test</code></td><td>启用 BOOT 键、AI control task、UI snapshot 和 Wi-Fi service。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_AI_ASSISTANT</code></td><td><code>0</code></td><td>AI 测试环境</td><td>启用 BOOT 键、AI control task、UI snapshot 和 Wi-Fi service。</td></tr>
+          <tr><td><code>BIKE_MB_ENABLE_AUDIO_SESSION</code></td><td><code>0</code></td><td>音频 / AI voice 环境</td><td>启用共享 codec/I2S0、录音和 PCM 输出。</td></tr>
           <tr><td><code>BIKE_MB_AI_USE_MOCK_PROVIDERS</code></td><td><code>0</code></td><td><code>ai-framework-test</code></td><td>用本地延时模拟 STT / LLM / TTS，不访问真实云服务。</td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
@@ -666,7 +667,7 @@
         </div>
         <table>
           <tr><th>层级</th><th>文件</th><th>关键函数</th><th>说明</th></tr>
-          <tr><td>App</td><td><code>dashboard_app.h/cpp</code></td><td><code>DashboardApp_Init</code><br><code>DashboardApp_Tick</code><br><code>DashboardApp_NextPage</code><br><code>DashboardApp_PreviousPage</code><br><code>DashboardApp_SetModeChangedCallback</code></td><td>UI 对外边界。</td></tr>
+          <tr><td>App</td><td><code>dashboard_app.h/cpp</code></td><td><code>DashboardApp_Init</code><br><code>DashboardApp_Tick</code><br><code>DashboardApp_ShowAiPage</code><br><code>DashboardApp_NextPage</code><br><code>DashboardApp_PreviousPage</code><br><code>DashboardApp_SetModeChangedCallback</code></td><td>UI 对外边界。</td></tr>
           <tr><td>View Adapter</td><td><code>dashboard_view.h/cpp</code></td><td><code>DashboardView_Create</code><br><code>DashboardView_Update</code></td><td>C++ 和 C UI core 的适配层。</td></tr>
           <tr><td>View Core</td><td><code>dashboard_view_core.h/c</code></td><td><code>BikeMbDashboardView_Create</code><br><code>BikeMbDashboardView_Update</code><br><code>BikeMbDashboardView_NextPage</code><br><code>BikeMbDashboardView_PreviousPage</code></td><td>页面容器、当前页状态、触摸手势路由。</td></tr>
           <tr><td>Pages</td><td><code>dashboard_pages.h/c</code></td><td><code>BikeMbDashboardPages_Create</code><br><code>BikeMbDashboardPages_Update</code><br><code>mode_click_event_cb</code></td><td>首页、独立 AI 页面、详情页的 LVGL object tree 和档位点击。</td></tr>
@@ -679,16 +680,16 @@
       <section id="ai-assistant">
         <div class="section-head">
           <h2>AI 助手控制框架</h2>
-          <p>当前已实现控制面、输入、snapshot/UI 映射和异步 Wi-Fi；音频与真实云 provider 仍未接入。</p>
+          <p>初版已形成 BOOT 按住说话、真实录音、云端识别/回答/合成、喇叭播放和 UI snapshot 闭环。<a href="architecture/ai-assistant-implementation.md">查看 AI 函数组说明</a>。</p>
         </div>
         <div class="grid two">
           <article class="card">
             <h3>当前已实现</h3>
-            <p><code>ai_button</code>、纯 <code>ai_state_machine</code>、<code>bikemb_ai</code> command queue、<code>bikemb_cloud</code> mock worker、<code>bikemb_wifi</code> 和 dashboard AI 状态映射。</p>
+            <p><code>ai_button</code>、纯状态机、<code>bikemb_ai</code>、<code>bikemb_cloud</code>、异步 Wi-Fi、AudioSession、Qwen ASR/Chat、CosyVoice TTS 和 dashboard AI 页面。</p>
           </article>
           <article class="card">
-            <h3>仍是计划能力</h3>
-            <p><code>AudioSession</code>、真实麦克风 clip、STT / DeepSeek / TTS adapter、TTS PCM 播放、HTTPS MP3、Music Service 和点歌 resolver。</p>
+            <h3>尚未完成</h3>
+            <p>DeepSeek 运行时接线、CA 证书校验、主动中断 HTTPS、流式 TTS、AI 页面控制按钮、HTTPS MP3、Music Service 和点歌 resolver。</p>
           </article>
         </div>
         <table style="margin-top:14px">
@@ -697,28 +698,31 @@
           <tr><td><code>input/ai_button.*</code></td><td><code>BikeMbAiButton_Init/Tick</code></td><td>读取 GPIO0，只产生 press/release。</td></tr>
           <tr><td><code>ai/ai_state_machine.*</code></td><td><code>BikeMbAiStateMachine_Init/Dispatch</code></td><td>request ID、deadline、取消和状态转移的唯一 reducer。</td></tr>
           <tr><td><code>ai/ai_assistant.*</code></td><td><code>Init</code> / <code>Cancel</code> / <code>GetSnapshot</code></td><td><code>bikemb_ai</code> 是状态唯一写入者；8 项队列，20 ms tick。</td></tr>
-          <tr><td><code>ai/cloud_worker.*</code></td><td><code>Init</code> / <code>Submit</code> / <code>CancelBefore</code></td><td><code>bikemb_cloud</code> 当前只模拟阶段延时，结果携带 request ID。</td></tr>
+          <tr><td><code>ai/cloud_worker.*</code></td><td><code>Init</code> / <code>Submit</code> / <code>SetCaptureClip</code> / <code>CancelBefore</code></td><td><code>bikemb_cloud</code> 串行执行真实或 mock stage，结果携带 request ID。</td></tr>
+          <tr><td><code>audio/audio_session.*</code></td><td><code>Start/Poll/FinishCapture</code> / <code>WriteStereoPcm</code></td><td>I2S0 单一 owner、PSRAM clip 和 TTS 播放。</td></tr>
+          <tr><td><code>ai/*_adapter.*</code></td><td>Qwen ASR / Qwen Chat / CosyVoice / DeepSeek</td><td>前三者组成当前运行链路；DeepSeek adapter 尚未接入 worker。</td></tr>
           <tr><td><code>network/wifi_service*.*</code></td><td><code>BikeMbWifiService_Init</code> / core <code>Update</code></td><td><code>bikemb_wifi</code> 后台连接，10 s 重试，只发布 connected 状态。</td></tr>
           <tr><td><code>app/ai_assistant_ui_state.*</code></td><td><code>BikeMbAiUiState_FromSnapshot</code></td><td>把内部状态映射成 dashboard 安全文案和展示层级。</td></tr>
         </table>
         <div class="flow" style="margin-top:14px">
           <div class="node"><b>BOOT / GPIO0</b><span>3000 ms guard<br>50 ms release<br>30 ms debounce</span></div>
           <div class="node"><b>bikemb_ai</b><span>queue → reducer → snapshot/effects</span></div>
-          <div class="node"><b>bikemb_cloud</b><span>mock STT → LLM → TTS</span></div>
+          <div class="node"><b>AudioSession</b><span>capture clip + PCM output</span></div>
+          <div class="node"><b>bikemb_cloud</b><span>Qwen ASR → Chat → CosyVoice</span></div>
           <div class="node"><b>DashboardApp</b><span>copy snapshot → AI UI state</span></div>
           <div class="node"><b>LVGL Pages</b><span>chip / overlay / full-page semantics</span></div>
         </div>
         <div class="grid two" style="margin-top:14px">
           <article class="card">
             <h3>取消与旧结果隔离</h3>
-            <p>取消或忙态重新按键会递增有效 <code>requestId</code>，并调用 <code>BikeMbCloudWorker_CancelBefore(...)</code>。旧 callback 即使晚到也不能改写新状态。</p>
+            <p>取消或忙态重新按键会递增有效 <code>requestId</code>，旧 callback 不能改写新状态；但阻塞中的 HTTPS 只能等待 15 秒读超时返回。</p>
           </article>
           <article class="card">
             <h3>BOOT 安全边界</h3>
             <p>GPIO0 仍是 ESP32-S3 启动 strap。3 秒延时只阻止应用层误触发；按住 BOOT 上电或复位仍可能进入 ROM 下载模式。</p>
           </article>
         </div>
-        <div class="callout">状态流转现在使用 mock capture 和 mock provider。它能验证任务、队列、取消和 UI 反馈，但不能证明麦克风、TLS、云 API、TTS 播放或音乐链路可用。</div>
+        <div class="callout">当前真实链路使用 Qwen Chat，不是 DeepSeek。真实云测试环境还启用了 insecure TLS，且串口会打印截断的转写/回答；这些都必须在产品启用前收口。</div>
       </section>
 
       <section id="audio-pins">
@@ -804,6 +808,8 @@
           <tr><td><code>esp32-s3-touch-lcd-1-85c-mode-prompts-test</code></td><td>Arduino</td><td>点击档位后播放预录语音。</td><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS=1</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-voice-direct-test</code></td><td>Arduino</td><td>ESP-SR 直接识别翻页。</td><td><code>board_build.partitions = esp_sr_16.csv</code><br><code>BIKE_MB_ENABLE_VOICE_COMMANDS=1</code><br><code>extra_scripts = pre:../../../tools/pio_upload_srmodels.py</code></td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-framework-test</code></td><td>Arduino</td><td>BOOT 键、AI 状态机、UI、Wi-Fi 和 mock worker 验证。</td><td><code>BIKE_MB_ENABLE_AI_ASSISTANT=1</code><br><code>BIKE_MB_AI_USE_MOCK_PROVIDERS=1</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-voice-mock-test</code></td><td>Arduino</td><td>真实录音、mock provider 和本地提示音。</td><td>AI + AudioSession + mock provider</td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test</code></td><td>Arduino</td><td>真实云语音问答闭环。</td><td>AI + AudioSession + 测试专用 insecure TLS</td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF</td><td>Runtime/Event/Service 迁移构建。</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME=1</code></td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
@@ -896,8 +902,11 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>test_ai_framework.py</code></td><td>AI 配置、BOOT reducer、状态机、UI 映射、task/queue 所有权和 main feature gate。</td></tr>
           <tr><td><code>test_dashboard_ai_ui_contract.py</code></td><td>独立 AI 页面只读取 UI-facing snapshot，不直接调用 cloud、audio 或 Assistant 命令。</td></tr>
           <tr><td><code>test_wifi_service_contract.py</code></td><td>异步 Wi-Fi 初始化、密钥边界、状态发布和重试 reducer。</td></tr>
+          <tr><td><code>test_cloud_worker_real_contract.py</code></td><td>真实 CloudWorker、provider 串联、request 失效和资源边界。</td></tr>
+          <tr><td><code>test_audio_capture_contract.py</code></td><td>有界 PSRAM clip 和 stereo-to-mono 录音路径。</td></tr>
+          <tr><td><code>test_cosyvoice_tts_contract.py</code></td><td>CosyVoice SSE/Base64 PCM 解析与播放边界。</td></tr>
           <tr><td><code>ai_button_logic_test.cpp</code></td><td>3000 ms guard、50 ms 释放解锁、30 ms 消抖。</td></tr>
-          <tr><td><code>ai_state_machine_test.cpp</code></td><td>短录音、10 s 上限、15 s deadline、取消和旧 request 丢弃。</td></tr>
+          <tr><td><code>ai_state_machine_test.cpp</code></td><td>短录音、10 s 上限、60 s deadline、取消和旧 request 丢弃。</td></tr>
         </table>
         <pre><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1</code></pre>
       </section>
@@ -910,23 +919,23 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
         <div class="grid two">
           <article class="card">
             <h3>音频链路所有权</h3>
-            <p>语音输出和语音识别目前是两个测试环境，不建议同时打开。后续要“边听边播”，需要共享音频管理或暂停/恢复识别策略。</p>
+            <p>AudioSession 已统一 AI、Audio Self Test 和 Audio Prompts；Voice Commands 尚未迁移，继续保持编译期互斥。</p>
           </article>
           <article class="card">
             <h3>语音命令能力</h3>
             <p><code>voice-direct-test</code> 没有唤醒词，可能误识别；当前 Arduino ESP-SR 路径也还没有启用中文命令识别。</p>
           </article>
           <article class="card">
-            <h3>AI 仍是 mock 链路</h3>
-            <p>当前 capture 和 STT / LLM / TTS effect 只模拟阶段流转，真实麦克风、HTTPS、DeepSeek 和语音播放尚未接入。</p>
+            <h3>真实云仍是测试配置</h3>
+            <p>真实链路已接入，但使用 Qwen Chat、insecure TLS，并会打印截断后的转写和回答；默认固件仍关闭 AI。</p>
           </article>
           <article class="card">
             <h3>AI 页面暂时只读</h3>
             <p>dashboard 第二页已经显示网络、状态、提示、波形和状态环；取消、重试、停止动作尚未接到 Assistant 命令接口。</p>
           </article>
           <article class="card">
-            <h3>AudioSession 尚未落地</h3>
-            <p>音频自检、档位播报和 ESP-SR 仍分别初始化 I2S0/codec；AI 音频接入前必须先建立唯一所有者。</p>
+            <h3>取消和 TTS 延迟</h3>
+            <p>取消不能主动关闭阻塞 HTTPS；CosyVoice PCM 完整缓冲后再播放，PSRAM 峰值和首包延迟仍需优化。</p>
           </article>
           <article class="card">
             <h3>音乐路径未实现</h3>

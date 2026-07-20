@@ -108,7 +108,7 @@ stateDiagram-v2
 - 单次骑行结束条件。
 - 总里程写入节流策略。
 
-## AI 助手状态机（V1 目标）
+## AI 助手状态机（初版实现）
 
 ```mermaid
 stateDiagram-v2
@@ -117,11 +117,11 @@ stateDiagram-v2
   Idle --> Recording: AI button pressed
   Recording --> Recognizing: AI button released
   Recognizing --> Thinking: STT text ready
-  Thinking --> Synthesizing: DeepSeek answer ready
-  Synthesizing --> Speaking: first TTS PCM ready
-  Speaking --> Idle: playback completed
+  Thinking --> Synthesizing: Qwen Chat answer ready
+  Synthesizing --> Speaking: TTS job returns after playback
+  Speaking --> Idle: PLAYBACK_DONE queued next
 
-  Idle --> ConnectingMusic: play configured stream
+  Idle --> ConnectingMusic: reserved / not implemented
   ConnectingMusic --> MusicPlaying: stream and decoder ready
   MusicPlaying --> Idle: stop or end of stream
   MusicPlaying --> Recording: AI button pressed / stop music
@@ -158,9 +158,9 @@ stateDiagram-v2
 | `Idle` | `AI 待命` | Wi-Fi 状态、可用服务 |
 | `Recording` | `正在聆听` | 录音时长、取消入口 |
 | `Recognizing` | `正在识别` | STT 阶段和剩余总期限 |
-| `Thinking` | `正在思考` | DeepSeek 阶段和剩余总期限 |
+| `Thinking` | `正在思考` | 当前 Qwen Chat 阶段和剩余总期限 |
 | `Synthesizing` | `正在准备语音` | TTS 阶段和剩余总期限 |
-| `Speaking` | `正在回答` | 播放状态、停止入口 |
+| `Speaking` | `正在回答` | 当前初版中该状态在实际 PCM 播放结束后才短暂出现，待修正 callback 时序 |
 | `ConnectingMusic` | `正在连接音乐` | 脱敏来源和连接状态 |
 | `MusicPlaying` | `音乐播放中` | 播放状态、停止入口 |
 | `Error` | `AI 暂时不可用` | 脱敏错误类别和重试入口 |
@@ -170,20 +170,22 @@ stateDiagram-v2
 - `AI button pressed` 仅由独立实体键产生。V1 不从触摸控件开始录音。
 - Recording 期间松键立即停止采样。录音短于 `300 ms` 或没有有效样本时视为取消并返回 Idle，不调用 STT。
 - 达到 `10` 秒上限时停止采样并进入 Error，不静默上传截断内容；保持该 Error 直到实体键松开，该次松开事件只解除按键锁存，不提交请求。
-- 松键后建立统一 `15` 秒 deadline，STT、LLM 和 TTS 共用该期限；任一阶段不得通过重置计时延长总等待。
+- 松键后建立统一 `60` 秒 deadline，STT、LLM 和 TTS 共用该期限；任一阶段不得通过重置计时延长总等待。
 - 忙态再次按下实体 AI 键会使旧 request 失效，并在 Wi-Fi 可用时直接进入新 Recording；AI 页面 Cancel 只取消，不自动开始新录音。
-- Cancel 会递增有效 `request_id`、中止可中止的 HTTP 操作、停止音频并回到 Idle。旧回调即使晚到也不得改变状态。云 worker 与 AI control task 分离，阻塞中的 provider 不得阻止状态取消。
+- Cancel 会递增有效 `request_id`、停止本地音频并回到 Idle。旧回调即使晚到也不得改变状态。当前 CloudWorker 不能主动关闭阻塞中的 HTTPS，后续 cloud job 仍需等待当前 stage 在读超时内返回，但这不会阻止本地状态取消和 Dashboard 更新。
 - Error 至少显示 `1500 ms`，且只在实体键已松开时自动回到 Idle；用户在可重试条件下再次按键可开始新请求。错误不会改变 Dashboard 页面状态或骑行 metrics。
 - Wi-Fi 断开是 AI 能力错误，不是系统级错误。Wi-Fi Service 在后台重连，Dashboard 继续运行。
 
-## Audio Session 状态机（V1 目标）
+`ConnectingMusic` 和 `MusicPlaying` 目前只有枚举、UI 映射和目标转移，现有事件/effect 不会进入这两个状态。
+
+## Audio Session 所有权（初版实现）
 
 ```mermaid
 stateDiagram-v2
   [*] --> Free
   Free --> Capturing: acquire AI_CAPTURE
   Capturing --> Free: finish or cancel
-  Free --> PlayingSpeech: acquire AI_SPEECH
+  Free --> PlayingSpeech: acquire AI_PLAYBACK
   PlayingSpeech --> Free: complete or cancel
   Free --> PlayingMusic: acquire MUSIC
   PlayingMusic --> Free: stop or failure
@@ -192,9 +194,9 @@ stateDiagram-v2
   PlayingMusic --> Capturing: AI press / stop music first
 ```
 
-音频所有权优先级：取消操作最高，其次是 AI 录音、AI 回答、音乐、普通提示音。V1 不做混音、不做录播并行、不恢复被 AI 录音打断的音乐位置。
+当前 core 只实现单 owner + `requestId` 精确获取/释放，不实现自动优先级和抢占。取消可调用 `ReleaseAll`；其他 owner 冲突时 `Acquire` 返回 false。初版不做混音或录播并行，Music owner 仍是预留。
 
-## Wi-Fi 状态（V1 目标）
+## Wi-Fi 状态（初版实现）
 
 ```mermaid
 stateDiagram-v2

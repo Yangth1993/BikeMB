@@ -16,15 +16,15 @@
 | Audio Self Test | 喇叭、麦克风、串口模拟命令验证 | `src/audio/audio_self_test.*` |
 | Voice Commands | ESP-SR 直接语音命令测试路径 | `src/voice/voice_commands.*` |
 | Runtime | ESP-IDF 事件队列和服务骨架 | `src/runtime/*`, `src/services/*` |
-| AI Button | BOOT/AI 键启动保护与消抖，产生 press/release 命令 | `src/input/ai_button.*`（计划） |
-| AI Assistant | 编排 AI 状态、超时、取消和状态快照 | `src/ai/ai_assistant.*`（计划） |
-| Cloud Worker | 在独立 task 执行阻塞式云调用并返回带 request ID 的结果 | `src/ai/cloud_worker.*`（计划） |
-| Wi-Fi Service | AI 启用时维持连接并发布连接状态 | `src/network/wifi_service.*`（计划） |
-| Cloud Providers | STT、DeepSeek、TTS 的供应商协议适配 | `src/ai/providers/*`（计划） |
-| Audio Session | 唯一拥有 I2S0、ES7210、ES8311，仲裁录音与播放 | `src/audio/audio_session.*`（计划） |
+| AI Button | BOOT/AI 键启动保护与消抖，按下时切换 AI 页面并产生 press/release 命令 | `src/input/ai_button.*`, `src/input/ai_button_logic.*` |
+| AI Assistant | `bikemb_ai` 唯一拥有状态机，编排录音、云阶段、超时、取消和状态快照 | `src/ai/ai_assistant.*`, `src/ai/ai_state_machine.*`, `src/ai/ai_types.h` |
+| Cloud Worker | `bikemb_cloud` 串行执行阻塞式 STT、LLM、TTS 和 TTS 播放，返回带 request ID 的结果 | `src/ai/cloud_worker.*` |
+| Wi-Fi Service | `bikemb_wifi` 异步维持连接并向 Assistant 发布连接状态 | `src/network/wifi_service.*`, `src/network/wifi_service_core.*` |
+| Cloud Providers | 当前运行时使用 Qwen ASR、Qwen Chat、CosyVoice；DeepSeek adapter 已实现但未接入 | `src/ai/qwen_asr_adapter.*`, `src/ai/qwen_chat_adapter.*`, `src/ai/cosyvoice_tts_adapter.*`, `src/ai/deepseek_adapter.*` |
+| Audio Session | 统一拥有 I2S0、ES7210、ES8311，仲裁录音与播放并管理 PSRAM clip | `src/audio/audio_session.*`, `src/audio/audio_session_core.*`, `src/audio/audio_capture_core.*` |
 | Stream Player | HTTPS 音频读取、MP3 解码、PCM 分块输出 | `src/audio/stream_player.*`（计划） |
 | Music Service | 管理预设/私有 URL，并预留未来曲目解析接口 | `src/music/music_service.*`（计划） |
-| AI UI | 主界面轻提示、独立 AI 页面和 snapshot 映射 | `src/app/ai_assistant_view.*`（计划） |
+| AI UI | 独立 AI 页面、按录音键自动进入页面及 snapshot 到显示状态映射 | `src/app/ai_assistant_ui_state.*`, `src/app/dashboard_*` |
 
 ## 分层规则
 
@@ -54,7 +54,7 @@ ESP-IDF Runtime 当前用于验证未来服务化结构。新功能迁入前需�
 
 - 只负责 GPIO、电平语义和消抖，不判断云端状态。
 - 按下产生 `PRESS`，松开产生 `RELEASE`。独立的 `CANCEL` 只来自 AI 页面；忙态再次按下由 AI Assistant 解释为“取消旧请求并开始新录音”。
-- 按键 GPIO 由板级配置提供，业务模块不得写死引脚。
+- 按键 GPIO 当前由 `ai_config.h` 固定为 GPIO0；后续若增加 board config，应保持业务 reducer 不感知引脚。
 - V1 复用板载 `Key1/BOOT`：`GPIO0`、低电平有效、板载 `10 kΩ` 上拉，详见 ADR-0003。
 - 上电后前 `3000 ms` 忽略按键；满 `3000 ms` 后还必须先观察到连续 `50 ms` 的释放电平才允许产生首个 `PRESS`。这避免按键从启动阶段一直被按住时自动开始录音。
 - GPIO0 在复位采样阶段仍是下载模式 strap；按住 BOOT 上电或复位会进入 ROM 下载模式，固件延时无法消除该行为。
@@ -65,24 +65,24 @@ ESP-IDF Runtime 当前用于验证未来服务化结构。新功能迁入前需�
 - 通过命令队列接收按键、播放和取消命令，通过 snapshot 向 UI 暴露只读状态。
 - 为每次请求分配 `request_id`，取消或新请求开始后忽略旧请求结果。
 - 不执行阻塞式 provider 调用；云调用由独立 cloud worker 执行并以带 `request_id` 的结果事件返回。
-- 不保存原始录音、转写或回答，不直接调用 LVGL。
+- 不直接调用 LVGL。录音 clip、转写和回答在当前 request 生命周期内由 AudioSession/CloudWorker 暂存，结束或取消后释放或覆盖。
 
 ### Cloud Providers
 
 provider 分为三个窄接口：
 
 - `SttProvider`：WAV/PCM clip 转 UTF-8 文本。
-- `LlmProvider`：UTF-8 问题转短回答。V1 默认实现调用 DeepSeek。
+- `LlmProvider`：UTF-8 问题转短回答。当前 CloudWorker 调用 Qwen Chat；DeepSeek adapter 尚未接入。
 - `TtsProvider`：UTF-8 回答转 PCM/WAV 音频流。
 
-V1 默认 STT 为百炼 `qwen3-asr-flash` 短音频 REST，输入为 Base64 WAV；默认 TTS 为 `cosyvoice-v3-flash` HTTP/SSE，输出为 `16 kHz` mono PCM。供应商特有 endpoint、鉴权头、SSE 和 JSON 字段只能出现在对应 adapter 内，不能泄漏到 AI Assistant。
+当前 STT 为百炼 `qwen3-asr-flash` 短音频 REST，LLM 为 `qwen-plus`，TTS 为 `cosyvoice-v3-flash` HTTP/SSE。供应商特有 endpoint、鉴权头、SSE 和 JSON 字段不能泄漏到 AI Assistant。
 
 ### Audio Session
 
 - 统一初始化 ES7210、ES8311 和 I2S0，其他生产模块不得创建第二个 `I2SClass(I2S_NUM_0)`。
 - V1 使用半双工会话：录音和播放不并发。
 - 录音请求会停止音乐；TTS 回答不会与音乐混音；普通档位提示在 AI 会话期间丢弃或延后，不抢占 AI。
-- 取消命令优先级最高，必须使阻塞中的读写尽快返回。
+- 取消命令会立刻释放本地音频并使旧 request 失效；当前阻塞 HTTPS 只能依赖短超时返回，尚不能主动中止。
 
 ### Stream Player 与 Music Service
 
@@ -91,13 +91,13 @@ V1 默认 STT 为百炼 `qwen3-asr-flash` 短音频 REST，输入为 Base64 WAV�
 - Music Service V1 从预设或私有配置读取 URL。后续点歌新增 `MusicCatalogProvider::Resolve(query)`，结果仍交给相同 Stream Player。
 - 第三方解码库必须单独评估许可证、I2S 所有权和 Arduino 3.x 兼容性。GPL-3.0 的 `ESP32-audioI2S`、`ESP8266Audio` 和 `arduino-audio-tools` 只作为调研参考，不作为默认依赖决策。
 
-## 现有音频模块迁移顺序
+## 现有音频模块迁移状态
 
-1. 先提取 codec/I2S 初始化到 `AudioSession`，保持现有测试环境互斥。
-2. 让 Audio Self Test 通过 `AudioSession` 完成 speaker tone 和 mic RMS，验证输入输出未回归。
-3. 让 Audio Prompts 通过 `AudioSession` 播放，验证异步提交和新请求覆盖旧请求。
+1. codec/I2S 初始化已经提取到 `AudioSession`。
+2. Audio Self Test 和 Audio Prompts 已通过 `AudioSession` 获取 owner。
+3. AI capture 和 TTS PCM 播放已接入 `AudioSession`。
 4. Voice Commands 在迁移前继续保持独立测试环境；AI 环境不得启用该环境。
-5. 前四步稳定后再接 AI capture/TTS，最后接 MP3 stream。
+5. MP3 stream 和 Music Service 尚未实现。
 
 每一步都必须保证源码中生产路径只剩一个 `I2SClass(I2S_NUM_0)` owner，并保留对应 PlatformIO 测试环境作为回归入口。
 
@@ -112,7 +112,8 @@ V1 默认 STT 为百炼 `qwen3-asr-flash` 短音频 REST，输入为 Base64 WAV�
 ```mermaid
 flowchart TD
   Input["AI Button / UI Commands"] --> Assistant["AI Assistant"]
-  Assistant --> Providers["STT / LLM / TTS Providers"]
+  Assistant --> Worker["Cloud Worker"]
+  Worker --> Providers["Qwen ASR / Qwen Chat / CosyVoice"]
   Assistant --> Music["Music Service"]
   Assistant --> Audio["Audio Session"]
   Providers --> Transport["HTTPS Transport"]
@@ -124,6 +125,8 @@ flowchart TD
 ```
 
 禁止反向依赖：provider、音频和网络模块不得依赖 Dashboard 或 LVGL；AI UI 不得依赖具体供应商 adapter。
+
+更细的函数边界、任务上下文和数据所有权见 `docs/architecture/ai-assistant-implementation.md`。
 
 ## 非目标
 
