@@ -35,7 +35,7 @@ int main() {
   const uint32_t request = machine.snapshot.requestId;
   effects = dispatch(&machine, BIKE_MB_AI_EVENT_BUTTON_RELEASED, 1400);
   assert(machine.snapshot.state == BIKE_MB_AI_RECOGNIZING);
-  assert(machine.deadlineMs == 16400);
+  assert(machine.deadlineMs == 61400);
   assert((effects & BIKE_MB_AI_EFFECT_SUBMIT_STT) != 0);
 
   dispatch(&machine, BIKE_MB_AI_EVENT_STT_READY, 2000, request);
@@ -69,7 +69,7 @@ int main() {
   dispatch(&machine, BIKE_MB_AI_EVENT_BUTTON_PRESSED, 19000);
   const uint32_t timedRequest = machine.snapshot.requestId;
   dispatch(&machine, BIKE_MB_AI_EVENT_BUTTON_RELEASED, 19400);
-  dispatch(&machine, BIKE_MB_AI_EVENT_STT_READY, 34401, timedRequest);
+  dispatch(&machine, BIKE_MB_AI_EVENT_STT_READY, 79401, timedRequest);
   assert(machine.snapshot.state == BIKE_MB_AI_ERROR);
 
   BikeMbAiStateMachine unavailable = {};

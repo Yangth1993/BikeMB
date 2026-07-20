@@ -74,12 +74,16 @@ def test_lvgl_flush_metrics_are_collected_without_async_flush() -> None:
     check("handlerMaxUs" in run_body, "LvglPort_Run() must track max lv_timer_handler() time.")
 
 
-def test_lvgl_draw_buffers_remain_internal_ram_and_use_40_lines() -> None:
+def test_lvgl_draw_buffers_remain_internal_ram_and_default_to_40_lines() -> None:
     source = read_repo_text(LVGL_PORT)
 
     check(
-        "kBufferLines = 40" in source,
-        "LVGL draw buffer should use the measured 40-line profile for the stable 40 FPS pass.",
+        "#define BIKE_MB_LVGL_BUFFER_LINES 40" in source,
+        "LVGL draw buffer should default to the measured 40-line profile for the stable 40 FPS pass.",
+    )
+    check(
+        "kBufferLines = BIKE_MB_LVGL_BUFFER_LINES" in source,
+        "LVGL draw buffer lines must be build-configurable for constrained cloud test profiles.",
     )
     check(
         "MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT" in source,
@@ -95,5 +99,5 @@ if __name__ == "__main__":
     test_display_driver_has_static_lifetime()
     test_flush_callback_stays_synchronous_and_simple()
     test_lvgl_flush_metrics_are_collected_without_async_flush()
-    test_lvgl_draw_buffers_remain_internal_ram_and_use_40_lines()
+    test_lvgl_draw_buffers_remain_internal_ram_and_default_to_40_lines()
     print("PASS test_lvgl_port_contract")

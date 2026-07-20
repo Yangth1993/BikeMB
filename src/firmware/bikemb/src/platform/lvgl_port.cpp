@@ -11,7 +11,11 @@ namespace {
 
 constexpr uint16_t kHorRes = EXAMPLE_LCD_WIDTH;
 constexpr uint16_t kVerRes = EXAMPLE_LCD_HEIGHT;
-constexpr uint16_t kBufferLines = 40;
+#ifndef BIKE_MB_LVGL_BUFFER_LINES
+#define BIKE_MB_LVGL_BUFFER_LINES 40
+#endif
+static_assert(BIKE_MB_LVGL_BUFFER_LINES > 0, "BIKE_MB_LVGL_BUFFER_LINES must be positive");
+constexpr uint16_t kBufferLines = BIKE_MB_LVGL_BUFFER_LINES;
 constexpr size_t kBufferPixels = static_cast<size_t>(kHorRes) * kBufferLines;
 
 lv_disp_draw_buf_t g_drawBuffer;

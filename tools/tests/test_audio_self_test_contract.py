@@ -27,16 +27,24 @@ def test_audio_self_test_is_present_but_default_off() -> None:
     check("BikeMbAudioSelfTest_Tick" in audio_header, "Audio self-test API must expose tick.")
     check("BikeMbAudioSelfTest_PlayPageTone" in audio_header, "Audio self-test API must expose page feedback tone.")
     check("BikeMbAudioSelfTest_ConsumeCommand" in audio_header, "Audio self-test API must expose a simulated command queue.")
-    check("GPIO_NUM_15" in audio_source, "Audio self-test must control the documented PA enable pin.")
-    check("GPIO_NUM_2" in audio_source and "GPIO_NUM_48" in audio_source, "Audio self-test must use documented I2S clock pins.")
-    check("GPIO_NUM_38" in audio_source and "GPIO_NUM_47" in audio_source, "Audio self-test must use documented I2S data pins.")
-    check("GPIO_NUM_39" in audio_source, "Audio self-test must use documented I2S input pin.")
-    check("kEs7210Address = 0x40" in audio_source, "Audio self-test must target the documented ES7210 microphone codec.")
-    check("initMicrophoneCodec()" in audio_source, "Audio self-test must initialize the ES7210 microphone codec.")
+    check('#include "audio_session.h"' in audio_source, "Audio self-test must use AudioSession.")
+    check("ESP_I2S.h" not in audio_source, "Audio self-test must not create its own I2S owner.")
+    check("I2C_Driver.h" not in audio_source, "Audio self-test must not initialize codecs directly.")
+    check("I2SClass" not in audio_source, "Audio self-test must not allocate I2S0 directly.")
+    check("initSpeakerCodec" not in audio_source, "Audio self-test speaker init must live in AudioSession.")
+    check("initMicrophoneCodec" not in audio_source, "Audio self-test mic init must live in AudioSession.")
+    check("BikeMbAudioSession_Acquire(BIKE_MB_AUDIO_SESSION_OWNER_SELF_TEST" in audio_source, "Audio self-test must acquire the SELF_TEST owner.")
+    check("BikeMbAudioSession_WriteStereoPcm" in audio_source, "Audio self-test tones must write through AudioSession.")
+    check("BikeMbAudioSession_ReadMicBytes" in audio_source, "Audio self-test mic RMS must read through AudioSession.")
+    check("BikeMbAudioSelfTest_MicTask" in audio_source, "Audio self-test mic RMS must run outside the UI loop.")
+    check("xTaskCreatePinnedToCore" in audio_source, "Audio self-test must create a background mic task.")
+    tick_body = audio_source.split("void BikeMbAudioSelfTest_Tick(uint32_t nowMs)", 1)[1]
+    tick_body = tick_body.split("void BikeMbAudioSelfTest_PlayPageTone", 1)[0]
+    check("reportMicLevel();" not in tick_body, "Audio self-test tick must not block the UI loop with mic reads.")
     check("kSampleRate = 16000" in audio_source, "Audio self-test microphone path must use the official 16 kHz sample rate.")
     check(
-        "I2S_SLOT_MODE_STEREO" in audio_source,
-        "Audio self-test microphone path must use the official stereo I2S slot mode.",
+        "I2S_SLOT_MODE_STEREO" in read_repo_text("src/firmware/bikemb/src/audio/audio_session.cpp"),
+        "AudioSession must keep the official stereo I2S slot mode.",
     )
 
 
@@ -61,9 +69,43 @@ def test_audio_self_test_has_explicit_opt_in_build_environment() -> None:
         "-D BIKE_MB_ENABLE_AUDIO_SELF_TEST=1" in config,
         "Audio self-test environment must enable BIKE_MB_ENABLE_AUDIO_SELF_TEST.",
     )
+    self_test_env = config.split("[env:esp32-s3-touch-lcd-1-85c-audio-self-test]", 1)[1]
+    self_test_env = self_test_env.split("\n[env:", 1)[0]
+    check(
+        "-D BIKE_MB_ENABLE_AUDIO_SESSION=1" in self_test_env,
+        "Migrated audio self-test environment must enable AudioSession.",
+    )
     check(
         "default_envs = esp32-s3-touch-lcd-1-85c" in config,
         "Default PlatformIO env must remain the non-audio firmware.",
+    )
+
+
+def test_audio_self_test_has_speaker_only_diagnostic_environment() -> None:
+    config = read_repo_text(PLATFORMIO_INI)
+    audio_source = read_repo_text(AUDIO_SOURCE)
+
+    check(
+        "BIKE_MB_AUDIO_SELF_TEST_DISABLE_MIC" in audio_source,
+        "Audio self-test must expose a compile-time mic-read diagnostic gate.",
+    )
+    check(
+        "[env:esp32-s3-touch-lcd-1-85c-audio-self-test-speaker-only]" in config,
+        "Audio self-test must have a speaker-only diagnostic PlatformIO environment.",
+    )
+    speaker_only_env = config.split("[env:esp32-s3-touch-lcd-1-85c-audio-self-test-speaker-only]", 1)[1]
+    speaker_only_env = speaker_only_env.split("\n[env:", 1)[0]
+    check(
+        "-D BIKE_MB_ENABLE_AUDIO_SESSION=1" in speaker_only_env,
+        "Speaker-only diagnostic env must still enable AudioSession.",
+    )
+    check(
+        "-D BIKE_MB_ENABLE_AUDIO_SELF_TEST=1" in speaker_only_env,
+        "Speaker-only diagnostic env must still enable audio self-test tone playback.",
+    )
+    check(
+        "-D BIKE_MB_AUDIO_SELF_TEST_DISABLE_MIC=1" in speaker_only_env,
+        "Speaker-only diagnostic env must disable mic reads.",
     )
 
 
@@ -97,5 +139,6 @@ if __name__ == "__main__":
     test_audio_self_test_is_present_but_default_off()
     test_audio_layer_is_part_of_the_existing_bikemb_build()
     test_audio_self_test_has_explicit_opt_in_build_environment()
+    test_audio_self_test_has_speaker_only_diagnostic_environment()
     test_dashboard_page_commands_are_public_and_touch_uses_them()
     print("PASS test_audio_self_test_contract")

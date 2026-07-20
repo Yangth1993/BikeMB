@@ -13,21 +13,23 @@
 
 - [x] 核对 V2 原理图并记录 `Key1/BOOT = GPIO0`、低电平有效、板载 `10 kΩ` 上拉和 ROM 下载模式风险。
 - [ ] 上板确认 3000 ms 启动保护、50 ms 释放解锁、30 ms 消抖和按住 BOOT 复位后的恢复行为。
-- [ ] Add host-testable `BikeMbAiState` reducer with request ID, cancel, and timeout tests.
-- [ ] Add tracked non-secret AI config and ignored `ai_secrets.local.h` template workflow.
-- [ ] Add `AiButton` input events using a board-configured GPIO and debounce tests.
-- [ ] Add `AiAssistant` command queue and immutable snapshot with mock providers.
-- [ ] Add a separate cloud worker and prove a blocked mock provider cannot block cancel or UI snapshot updates.
-- [ ] Consolidate ES7210, ES8311, and I2S0 ownership into `AudioSession` while keeping existing test environments mutually exclusive.
-- [ ] Migrate Audio Self Test to `AudioSession` and re-verify speaker tone and mic RMS.
-- [ ] Migrate Audio Prompts to `AudioSession` and re-verify asynchronous latest-request behavior.
-- [ ] Keep Voice Commands compile-time exclusive until it has its own `AudioSession` migration test.
-- [ ] Validate 10-second 16 kHz mono capture into a bounded PSRAM clip.
+- [x] Add host-testable `BikeMbAiState` reducer with request ID, cancel, and timeout tests.
+- [x] Add tracked non-secret AI config and ignored `ai_secrets.local.h` template workflow.
+- [x] Add `AiButton` input events using a board-configured GPIO and debounce tests.
+- [x] Add `AiAssistant` command queue and immutable snapshot with mock providers.
+- [x] Add a separate cloud worker and prove a blocked mock provider cannot block cancel or UI snapshot updates.
+- [x] Consolidate ES7210, ES8311, and I2S0 ownership into `AudioSession` while keeping existing test environments mutually exclusive.
+- [x] Migrate Audio Self Test to `AudioSession` and re-verify speaker tone and mic RMS.
+- [x] Migrate Audio Prompts to `AudioSession` and re-verify asynchronous latest-request behavior.
+- [x] Keep Voice Commands compile-time exclusive until it has its own `AudioSession` migration test.
+- [x] Validate 10-second 16 kHz mono capture into a bounded PSRAM clip.
 - [x] Add asynchronous `WifiService`; verify boot and dashboard do not wait for Wi-Fi.
-- [ ] Add `qwen3-asr-flash` adapter spike using streamed Base64 WAV JSON without duplicating the full clip.
-- [ ] Add DeepSeek adapter with response-length limits and redacted logs.
-- [ ] Add `cosyvoice-v3-flash` HTTP/SSE adapter with chunked 16 kHz mono PCM playback.
+- [x] Add `qwen3-asr-flash` adapter spike using streamed Base64 WAV JSON without duplicating the full clip.
+- [x] Add DeepSeek adapter with response-length limits and redacted logs.
+- [x] Add `cosyvoice-v3-flash` HTTP/SSE adapter with chunked 16 kHz mono PCM playback.
 - [x] Add dashboard AI status indicator and dedicated AI page using snapshots only.
+- [x] Add first board voice-assistant mock build with Wi-Fi, `AudioSession` capture, and local audible reply feedback.
+- [x] Add Bailian-only cloud voice build using Qwen ASR, Qwen Chat, and CosyVoice TTS.
 - [ ] Add HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, Arduino 3.x, and custom PCM sink checks.
 - [ ] Add `MusicService` for preset and private user URL playback.
 - [ ] Add cancel/stop integration across HTTP, audio capture, TTS, and music.

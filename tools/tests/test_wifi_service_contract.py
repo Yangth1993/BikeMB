@@ -26,6 +26,18 @@ def test_wifi_service_is_ai_feature_gated_and_nonblocking():
     assert "BikeMbAiAssistant_SetWifiConnected" in service
 
 
+def test_wifi_service_logs_board_side_bailian_connectivity():
+    service = read_text(FIRMWARE_ROOT / "src" / "network" / "wifi_service.cpp")
+
+    assert "WiFi.localIP()" in service
+    assert "WiFi.RSSI()" in service
+    assert "WiFi.hostByName" in service
+    assert "dashscope.aliyuncs.com" in service
+    assert "WiFiClient" in service
+    assert "connect(ip, 443)" in service
+    assert "BIKE_MB_AI_WIFI_PASSWORD" not in service[service.find("logWifiConnected") :]
+
+
 def test_dashboard_does_not_own_wifi_service():
     dashboard = read_text(FIRMWARE_ROOT / "src" / "app" / "dashboard_app.cpp")
     pages = read_text(FIRMWARE_ROOT / "src" / "app" / "dashboard_pages.c")
@@ -38,5 +50,6 @@ def test_dashboard_does_not_own_wifi_service():
 
 if __name__ == "__main__":
     test_wifi_service_is_ai_feature_gated_and_nonblocking()
+    test_wifi_service_logs_board_side_bailian_connectivity()
     test_dashboard_does_not_own_wifi_service()
     print("PASS test_wifi_service_contract")

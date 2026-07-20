@@ -5,6 +5,8 @@
 #endif
 
 #include "audio/audio_prompts.h"
+#include "audio/audio_capture_self_test.h"
+#include "audio/audio_session.h"
 #include "audio/audio_self_test.h"
 #include "ai/ai_assistant.h"
 #include "app/dashboard_app.h"
@@ -33,8 +35,21 @@
 #define BIKE_MB_ENABLE_AUDIO_PROMPTS 0
 #endif
 
+#ifndef BIKE_MB_ENABLE_AUDIO_SESSION
+#define BIKE_MB_ENABLE_AUDIO_SESSION 0
+#endif
+
+#ifndef BIKE_MB_ENABLE_AUDIO_CAPTURE_SELF_TEST
+#define BIKE_MB_ENABLE_AUDIO_CAPTURE_SELF_TEST 0
+#endif
+
 #ifndef BIKE_MB_ENABLE_AI_ASSISTANT
 #define BIKE_MB_ENABLE_AI_ASSISTANT 0
+#endif
+
+#if BIKE_MB_ENABLE_VOICE_COMMANDS && \
+    (BIKE_MB_ENABLE_AUDIO_SESSION || BIKE_MB_ENABLE_AUDIO_SELF_TEST || BIKE_MB_ENABLE_AUDIO_PROMPTS)
+#error "Voice Commands still own I2S0; migrate them to AudioSession before enabling shared audio features."
 #endif
 
 namespace {
@@ -112,6 +127,10 @@ void setup() {
   BikeMbWifiService_Init();
   BikeMbAiButton_Init();
 #endif
+#if BIKE_MB_ENABLE_AUDIO_SESSION
+  BikeMbAudioSession_Init();
+#endif
+  BikeMbAudioCaptureSelfTest_Init();
   BikeMbAudioPrompts_Init();
   BikeMbAudioSelfTest_Init();
   BikeMbVoiceCommands_Init();

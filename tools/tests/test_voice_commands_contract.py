@@ -30,6 +30,10 @@ def test_voice_commands_are_present_but_default_off() -> None:
     check('"Previous page"' in source, "Voice commands must include the English previous-page phrase.")
     check("SR_CHANNELS_STEREO" in source, "Voice commands must use the verified stereo ES7210 input path.")
     check('"MN"' in source, "Voice commands must describe the ES7210 stereo stream as microphone plus unused channel.")
+    check(
+        "BIKE_MB_ENABLE_VOICE_COMMANDS &&" in main and "Voice Commands still own I2S0" in main,
+        "Voice commands must stay compile-time exclusive until they have an AudioSession migration test.",
+    )
 
 
 def test_voice_commands_are_part_of_existing_bikemb_build() -> None:
@@ -54,6 +58,20 @@ def test_voice_commands_have_explicit_opt_in_build_environment() -> None:
     check(
         "-D BIKE_MB_ENABLE_VOICE_COMMANDS=1" in config,
         "Voice command environment must enable BIKE_MB_ENABLE_VOICE_COMMANDS.",
+    )
+    voice_env = config.split("[env:esp32-s3-touch-lcd-1-85c-voice-direct-test]", 1)[1]
+    voice_env = voice_env.split("\n[env:", 1)[0]
+    check(
+        "BIKE_MB_ENABLE_AUDIO_SESSION=1" not in voice_env,
+        "Voice direct environment must not enable AudioSession before voice is migrated.",
+    )
+    check(
+        "BIKE_MB_ENABLE_AUDIO_SELF_TEST=1" not in voice_env,
+        "Voice direct environment must not enable audio self-test.",
+    )
+    check(
+        "BIKE_MB_ENABLE_AUDIO_PROMPTS=1" not in voice_env,
+        "Voice direct environment must not enable audio prompts.",
     )
     check(
         "board_build.partitions = esp_sr_16.csv" in config,

@@ -13,6 +13,7 @@
 #include <Arduino.h>
 #if BIKE_MB_ENABLE_AI_ASSISTANT
 #include <WiFi.h>
+#include <WiFiClient.h>
 #endif
 #else
 #include "esp_log.h"
@@ -28,7 +29,8 @@
 
 namespace {
 constexpr uint32_t kPollIntervalMs = 1000;
-constexpr uint32_t kWifiServiceStackBytes = 4096;
+constexpr uint32_t kWifiServiceStackBytes = 6144;
+constexpr const char *kBailianProbeHost = "dashscope.aliyuncs.com";
 BikeMbWifiServiceCore s_core;
 TaskHandle_t s_task = nullptr;
 
@@ -67,11 +69,47 @@ void startConnect() {
 #endif
 }
 
+void logWifiConnected() {
+#if defined(ARDUINO) && !defined(BIKE_MB_USE_ESPIDF_RUNTIME) && \
+    BIKE_MB_ENABLE_AI_ASSISTANT
+  Serial.print("[BikeMB][wifi] connected ip=");
+  Serial.print(WiFi.localIP());
+  Serial.print(" rssi=");
+  Serial.println(WiFi.RSSI());
+
+  IPAddress ip;
+  const bool dnsOk = WiFi.hostByName(kBailianProbeHost, ip) == 1;
+  Serial.print("[BikeMB][wifi] dns dashscope ok=");
+  Serial.print(dnsOk ? 1 : 0);
+  if (dnsOk) {
+    Serial.print(" ip=");
+    Serial.print(ip);
+  }
+  Serial.println();
+
+  WiFiClient client;
+  client.setTimeout(3000);
+  const bool tcpOk = dnsOk && client.connect(ip, 443);
+  Serial.print("[BikeMB][wifi] tcp dashscope:443 ok=");
+  Serial.println(tcpOk ? 1 : 0);
+  client.stop();
+#endif
+}
+
+void logWifiDisconnected() {
+#if defined(ARDUINO) && !defined(BIKE_MB_USE_ESPIDF_RUNTIME) && \
+    BIKE_MB_ENABLE_AI_ASSISTANT
+  Serial.println("[BikeMB][wifi] disconnected");
+#endif
+}
+
 void applyActions(uint32_t actions) {
   if ((actions & BIKE_MB_WIFI_SERVICE_ACTION_PUBLISH_CONNECTED) != 0) {
+    logWifiConnected();
     BikeMbAiAssistant_SetWifiConnected(true);
   }
   if ((actions & BIKE_MB_WIFI_SERVICE_ACTION_PUBLISH_DISCONNECTED) != 0) {
+    logWifiDisconnected();
     BikeMbAiAssistant_SetWifiConnected(false);
   }
   if ((actions & BIKE_MB_WIFI_SERVICE_ACTION_START_CONNECT) != 0) {

@@ -1,9 +1,11 @@
 #include "ai_assistant.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #include "ai_config.h"
 #include "ai_state_machine.h"
+#include "audio/audio_session.h"
 #include "cloud_worker.h"
 
 #include "freertos/FreeRTOS.h"
@@ -20,11 +22,18 @@
 namespace {
 constexpr uint32_t kCommandQueueLength = 8;
 constexpr TickType_t kTickInterval = pdMS_TO_TICKS(20);
+constexpr uint32_t kMockReplySampleRateHz = 16000;
+constexpr uint32_t kMockReplyToneHz = 740;
+constexpr uint32_t kMockReplyToneMs = 180;
+constexpr int16_t kMockReplyAmplitude = 9000;
+constexpr size_t kMockReplyChunkFrames = 96;
 
 QueueHandle_t s_commandQueue = nullptr;
 BikeMbAiStateMachine s_machine;
 BikeMbAiSnapshot s_snapshot;
 portMUX_TYPE s_snapshotMux = portMUX_INITIALIZER_UNLOCKED;
+bool s_captureActive = false;
+uint32_t s_captureRequestId = 0;
 
 uint32_t nowMs() {
 #if defined(ARDUINO) && !defined(BIKE_MB_USE_ESPIDF_RUNTIME)
@@ -64,18 +73,116 @@ void submitCloudJob(BikeMbCloudStage stage) {
   BikeMbCloudWorker_Submit(job);
 }
 
+void logClipSummary(const char *prefix, const BikeMbAudioClip &clip) {
+  char message[96];
+  snprintf(
+      message,
+      sizeof(message),
+      "%s samples=%lu limit=%u",
+      prefix,
+      static_cast<unsigned long>(clip.sampleCount),
+      clip.hitLimit ? 1U : 0U);
+  diag(message);
+}
+
+void finishActiveCapture(const char *prefix, bool handoffToCloud) {
+  if (!s_captureActive) {
+    return;
+  }
+
+  BikeMbAudioClip clip = {};
+  const uint32_t requestId = s_captureRequestId;
+  s_captureActive = false;
+  s_captureRequestId = 0;
+  if (BikeMbAudioSession_FinishCapture(requestId, &clip)) {
+    logClipSummary(prefix, clip);
+    if (handoffToCloud && BikeMbCloudWorker_SetCaptureClip(requestId, &clip)) {
+      return;
+    }
+    BikeMbAudioSession_ReleaseClip(&clip);
+    return;
+  }
+  diag("ai capture finish unavailable");
+}
+
+void startCapture(uint32_t requestId) {
+  finishActiveCapture("ai capture replaced", false);
+  if (BikeMbAudioSession_StartCapture(requestId, BikeMbAiConfig::kMaxRecordingMs)) {
+    s_captureActive = true;
+    s_captureRequestId = requestId;
+    diag("ai capture start");
+    return;
+  }
+  diag("ai capture unavailable");
+}
+
+void pollCaptureIfActive() {
+  if (!s_captureActive) {
+    return;
+  }
+  if (!BikeMbAudioSession_PollCapture(s_captureRequestId)) {
+    finishActiveCapture("ai capture stopped", false);
+  }
+}
+
+void cancelAudio() {
+  finishActiveCapture("ai capture cancel", false);
+  if (BikeMbAudioSession_GetOwner() == BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK) {
+    BikeMbAudioSession_ReleaseAll();
+  }
+  diag("ai audio cancel");
+}
+
+void playMockAssistantReply(uint32_t requestId) {
+  if (!BikeMbAudioSession_Acquire(BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK, requestId)) {
+    diag("ai mock reply audio unavailable");
+    return;
+  }
+
+  int16_t chunk[kMockReplyChunkFrames * 2] = {};
+  const uint32_t totalFrames =
+      (kMockReplySampleRateHz * kMockReplyToneMs) / 1000U;
+  const uint32_t halfPeriod =
+      (kMockReplySampleRateHz / kMockReplyToneHz) / 2U;
+  uint32_t writtenFrames = 0;
+  while (writtenFrames < totalFrames) {
+    const size_t framesThisChunk =
+        (totalFrames - writtenFrames) < kMockReplyChunkFrames
+            ? static_cast<size_t>(totalFrames - writtenFrames)
+            : kMockReplyChunkFrames;
+    for (size_t frame = 0; frame < framesThisChunk; ++frame) {
+      const uint32_t sampleIndex = writtenFrames + static_cast<uint32_t>(frame);
+      const bool high =
+          halfPeriod == 0 ? true : ((sampleIndex / halfPeriod) % 2U) == 0;
+      const int16_t sample = high ? kMockReplyAmplitude : -kMockReplyAmplitude;
+      chunk[frame * 2] = sample;
+      chunk[frame * 2 + 1] = sample;
+    }
+    const size_t framesWritten = BikeMbAudioSession_WriteStereoPcm(
+        BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK,
+        requestId,
+        chunk,
+        framesThisChunk);
+    if (framesWritten == 0) {
+      break;
+    }
+    writtenFrames += static_cast<uint32_t>(framesWritten);
+  }
+  BikeMbAudioSession_Release(BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK, requestId);
+}
+
 void executeEffects(uint32_t effects) {
   if ((effects & BIKE_MB_AI_EFFECT_CANCEL_CLOUD) != 0) {
     BikeMbCloudWorker_CancelBefore(s_machine.snapshot.requestId);
   }
+  if ((effects & BIKE_MB_AI_EFFECT_CANCEL_AUDIO) != 0) {
+    cancelAudio();
+  }
   if ((effects & BIKE_MB_AI_EFFECT_START_CAPTURE) != 0) {
-    diag("ai mock capture start");
+    startCapture(s_machine.snapshot.requestId);
   }
   if ((effects & BIKE_MB_AI_EFFECT_FINISH_CAPTURE) != 0) {
-    diag("ai mock capture finish");
-  }
-  if ((effects & BIKE_MB_AI_EFFECT_CANCEL_AUDIO) != 0) {
-    diag("ai mock audio cancel");
+    finishActiveCapture("ai capture finish", true);
   }
   if ((effects & BIKE_MB_AI_EFFECT_SUBMIT_STT) != 0) {
     submitCloudJob(BIKE_MB_CLOUD_STAGE_STT);
@@ -97,6 +204,7 @@ void processEvent(const BikeMbAiEvent &event) {
 void assistantTask(void *) {
   BikeMbAiEvent event = {};
   for (;;) {
+    pollCaptureIfActive();
     if (xQueueReceive(s_commandQueue, &event, kTickInterval) == pdTRUE) {
       processEvent(event);
       continue;
@@ -134,6 +242,9 @@ void onCloudResult(
     case BIKE_MB_CLOUD_STAGE_TTS:
       event.type = BIKE_MB_AI_EVENT_TTS_STARTED;
       enqueueEvent(event);
+#if BIKE_MB_AI_USE_MOCK_PROVIDERS
+      playMockAssistantReply(requestId);
+#endif
       event.type = BIKE_MB_AI_EVENT_PLAYBACK_DONE;
       enqueueEvent(event);
       break;

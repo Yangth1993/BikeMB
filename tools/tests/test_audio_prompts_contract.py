@@ -35,11 +35,28 @@ def test_mode_audio_prompts_are_present_but_default_off() -> None:
     check("BIKE_MB_AUDIO_PROMPT_MODE_BOOST" in header, "Audio prompts must include BOOST.")
     check("BikeMbAudioPrompts_Init" in header, "Audio prompts must expose init.")
     check("BikeMbAudioPrompts_PlayMode" in header, "Audio prompts must expose mode playback.")
-    check("GPIO_NUM_15" in source, "Audio prompts must control the documented PA enable pin.")
-    check("GPIO_NUM_48" in source and "GPIO_NUM_38" in source, "Audio prompts must use documented I2S clock pins.")
-    check("GPIO_NUM_47" in source, "Audio prompts must use documented I2S speaker data pin.")
+    check('#include "audio_session.h"' in source, "Audio prompts must use AudioSession.")
+    check("ESP_I2S.h" not in source, "Audio prompts must not create their own I2S owner.")
+    check("I2C_Driver.h" not in source, "Audio prompts must not initialize codecs directly.")
+    check("I2SClass" not in source, "Audio prompts must not allocate I2S0 directly.")
+    check("initSpeakerCodec" not in source, "Audio prompt speaker init must live in AudioSession.")
+    check(
+        "BikeMbAudioSession_Acquire(BIKE_MB_AUDIO_SESSION_OWNER_PROMPT" in source,
+        "Audio prompts must acquire the PROMPT owner before playback.",
+    )
+    check(
+        "BikeMbAudioSession_Release(BIKE_MB_AUDIO_SESSION_OWNER_PROMPT" in source,
+        "Audio prompts must release the PROMPT owner after playback.",
+    )
+    check(
+        "BikeMbAudioSession_WriteStereoPcm" in source,
+        "Audio prompts must write PCM through AudioSession.",
+    )
     check("kSampleRate = 16000" in source, "Audio prompts must play 16 kHz assets.")
-    check("I2S_SLOT_MODE_STEREO" in source, "Audio prompts must output stereo I2S frames.")
+    check(
+        "I2S_SLOT_MODE_STEREO" in read_repo_text("src/firmware/bikemb/src/audio/audio_session.cpp"),
+        "AudioSession must keep stereo I2S frames for prompts.",
+    )
     check("kBikeMbPromptEcoPcm" in assets, "Audio assets must include ECO prompt data.")
     check("kBikeMbPromptTrailPcm" in assets, "Audio assets must include TRAIL prompt data.")
     check("kBikeMbPromptBoostPcm" in assets, "Audio assets must include BOOST prompt data.")
@@ -62,6 +79,12 @@ def test_mode_audio_prompts_are_part_of_existing_bikemb_build() -> None:
     check(
         "-D BIKE_MB_ENABLE_AUDIO_PROMPTS=1" in config,
         "Audio prompt environment must enable BIKE_MB_ENABLE_AUDIO_PROMPTS.",
+    )
+    prompt_env = config.split("[env:esp32-s3-touch-lcd-1-85c-mode-prompts-test]", 1)[1]
+    prompt_env = prompt_env.split("\n[env:", 1)[0]
+    check(
+        "-D BIKE_MB_ENABLE_AUDIO_SESSION=1" in prompt_env,
+        "Migrated audio prompt environment must enable AudioSession.",
     )
     check(
         "default_envs = esp32-s3-touch-lcd-1-85c" in config,

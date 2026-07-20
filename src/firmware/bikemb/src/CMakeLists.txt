@@ -2,6 +2,10 @@ set(BIKEMB_SRCS
     ai/ai_assistant.cpp
     ai/ai_state_machine.cpp
     ai/cloud_worker.cpp
+    ai/cosyvoice_tts_adapter.cpp
+    ai/deepseek_adapter.cpp
+    ai/qwen_asr_adapter.cpp
+    ai/qwen_chat_adapter.cpp
     app/ai_assistant_ui_state.cpp
     app/dashboard_app.cpp
     app/assets/dashboard_font_speed_140.c
@@ -13,8 +17,12 @@ set(BIKEMB_SRCS
     app/dashboard_ui_style.c
     app/dashboard_view.cpp
     app/dashboard_view_core.c
+    audio/audio_capture_core.cpp
+    audio/audio_capture_self_test.cpp
     audio/audio_prompt_assets.cpp
     audio/audio_prompts.cpp
+    audio/audio_session.cpp
+    audio/audio_session_core.cpp
     audio/audio_self_test.cpp
     app/demo_metrics.cpp
     app/display_diagnostics.cpp

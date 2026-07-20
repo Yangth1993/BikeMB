@@ -26,7 +26,7 @@ def test_configuration_contract():
     assert "kDebounceMs = 30" in config
     assert "kMinRecordingMs = 300" in config
     assert "kMaxRecordingMs = 10000" in config
-    assert "kCloudDeadlineMs = 15000" in config
+    assert "kCloudDeadlineMs = 60000" in config
     assert "kErrorDisplayMs = 1500" in config
     assert "BIKE_MB_AI_WIFI_PASSWORD" in example
     assert "BIKE_MB_AI_DEEPSEEK_TOKEN" in example
@@ -34,6 +34,8 @@ def test_configuration_contract():
     assert "[env:esp32-s3-touch-lcd-1-85c-ai-framework-test]" in platformio
     assert "-D BIKE_MB_ENABLE_AI_ASSISTANT=1" in platformio
     assert "-D BIKE_MB_AI_USE_MOCK_PROVIDERS=1" in platformio
+    assert "[env:esp32-s3-touch-lcd-1-85c-ai-voice-mock-test]" in platformio
+    assert "-D BIKE_MB_ENABLE_AUDIO_SESSION=1" in platformio
 
 
 def compile_and_run(name, sources):
@@ -75,6 +77,13 @@ def test_native_ai_reducers():
             PROJECT_ROOT / "tools" / "tests" / "wifi_service_core_test.cpp",
         ],
     )
+    compile_and_run(
+        "audio_session_core_test",
+        [
+            FIRMWARE_ROOT / "src" / "audio" / "audio_session_core.cpp",
+            PROJECT_ROOT / "tools" / "tests" / "audio_session_core_test.cpp",
+        ],
+    )
 
 
 def test_runtime_ownership_contract():
@@ -94,6 +103,26 @@ def test_runtime_ownership_contract():
     assert "BikeMbAiConfig::kButtonGpio" in button
     assert "BikeMbAiAssistant_GetSnapshot" in header
     assert "BikeMbAiAssistant_Cancel" in header
+
+
+def test_ai_voice_mock_uses_audio_session_contract():
+    assistant = read_text(FIRMWARE_ROOT / "src" / "ai" / "ai_assistant.cpp")
+    platformio = read_text(FIRMWARE_ROOT / "platformio.ini")
+
+    assert '"audio/audio_session.h"' in assistant
+    assert "BikeMbAudioSession_StartCapture" in assistant
+    assert "BikeMbAudioSession_PollCapture" in assistant
+    assert "BikeMbAudioSession_FinishCapture" in assistant
+    assert "BikeMbAudioSession_ReleaseClip" in assistant
+    assert "BikeMbAudioSession_GetOwner() == BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK" in assistant
+    assert "BikeMbAudioSession_ReleaseAll()" in assistant
+    assert "BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK" in assistant
+    assert "BikeMbAudioSession_WriteStereoPcm" in assistant
+    assert "[env:esp32-s3-touch-lcd-1-85c-ai-voice-mock-test]" in platformio
+    mock_env = platformio.split("[env:esp32-s3-touch-lcd-1-85c-ai-voice-mock-test]", 1)[1]
+    assert "-D BIKE_MB_ENABLE_AI_ASSISTANT=1" in mock_env
+    assert "-D BIKE_MB_AI_USE_MOCK_PROVIDERS=1" in mock_env
+    assert "-D BIKE_MB_ENABLE_AUDIO_SESSION=1" in mock_env
 
 
 def test_main_integration_is_feature_gated():
