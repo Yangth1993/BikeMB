@@ -31,8 +31,13 @@
 - [x] Route the AI recording key to the dedicated AI page before recording starts.
 - [x] Add first board voice-assistant mock build with Wi-Fi, `AudioSession` capture, and local audible reply feedback.
 - [x] Add Bailian-only cloud voice build using Qwen ASR, Qwen Chat, and CosyVoice TTS.
-- [ ] Add HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, Arduino 3.x, and custom PCM sink checks.
-- [ ] Add `MusicService` for preset and private user URL playback.
+- [ ] Complete and accept the ADR-0004 ESP-IDF dual-core migration gate.
+  - [x] Code-stage 1: `app_main()` starts `bike_runtime` on Core 0 and `bike_ui` on Core 1; AI Assistant, Cloud Worker, and Wi-Fi Worker are pinned to Core 0.
+  - [x] Code-stage 1: BOOT/AI key page navigation is routed through runtime event queue to the Core 1 UI owner.
+  - [x] Build-stage 1: `esp32-s3-touch-lcd-1-85c-idf` builds successfully with the local `esp_lcd` compiler workaround.
+  - [ ] Board-stage: verify boot, touch, display, recording, TTS, cancellation, and resource baselines before accepting the gate.
+- [ ] Add an isolated HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, ESP-IDF, and custom PCM sink checks. This spike must not enter the product runtime before the migration gate closes.
+- [ ] After the ADR-0004 gate closes, add `MusicService` for preset and private user URL playback.
 - [ ] Add cancel/stop integration across HTTP, audio capture, TTS, and music.
 - [ ] Record the AI-disabled 30-second steady dashboard baseline, then measure only each milestone's implemented phases.
 - [ ] Before enabling AI by default, measure internal heap, largest block, PSRAM, task stacks, UI loop work, underruns, and end-to-end latency for boot, capture, TLS, TTS, and music peaks.
@@ -41,7 +46,7 @@
 ## Deferred beyond V1
 
 - [ ] Evaluate streaming STT/TTS if the 8-second start-of-reply target cannot be met.
-- [ ] Add `MusicCatalogProvider` and voice point-song flow.
+- [ ] After the ADR-0004 gate closes, add `MusicCatalogProvider` and voice point-song flow.
 - [ ] Add ride-context read-only summaries for V2.
 - [ ] Add allowlisted device commands for V3.
 - [ ] Replace compile-time secrets with a production provisioning and credential-rotation design.

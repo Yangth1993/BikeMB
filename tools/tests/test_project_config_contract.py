@@ -5,6 +5,7 @@ from contract_helpers import check, read_repo_text
 
 PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
 SDKCONFIG_DEFAULTS = "src/firmware/bikemb/sdkconfig.defaults"
+IDF_CMAKE = "src/firmware/bikemb/CMakeLists.txt"
 ENV_NAME = "esp32-s3-touch-lcd-1-85c"
 ENV_SECTION = f"env:{ENV_NAME}"
 IDF_ENV_NAME = "esp32-s3-touch-lcd-1-85c-idf"
@@ -125,10 +126,24 @@ def test_espidf_sdkconfig_defaults_match_board_and_dashboard() -> None:
         check(token in defaults, f"sdkconfig.defaults must keep {token}.")
 
 
+def test_espidf_lcd_component_uses_local_compiler_ice_workaround() -> None:
+    cmake = read_repo_text(IDF_CMAKE)
+
+    check(
+        "idf_component_get_property(esp_lcd_lib esp_lcd COMPONENT_LIB)" in cmake,
+        "ESP-IDF build must keep the local esp_lcd component handle for compiler workaround.",
+    )
+    check(
+        "target_compile_options(${esp_lcd_lib} PRIVATE -O0)" in cmake,
+        "ESP-IDF build must compile esp_lcd at -O0 to avoid the current xtensa GCC ICE.",
+    )
+
+
 if __name__ == "__main__":
     test_platformio_target_env_and_board_stay_fixed()
     test_platformio_espidf_env_is_available_without_replacing_fallback()
     test_platformio_serial_monitor_stays_on_com5()
     test_platformio_lvgl_include_flags_stay_present()
     test_espidf_sdkconfig_defaults_match_board_and_dashboard()
+    test_espidf_lcd_component_uses_local_compiler_ice_workaround()
     print("PASS test_project_config_contract")

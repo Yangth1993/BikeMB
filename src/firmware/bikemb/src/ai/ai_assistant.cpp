@@ -7,6 +7,7 @@
 #include "ai_state_machine.h"
 #include "audio/audio_session.h"
 #include "cloud_worker.h"
+#include "runtime/bike_runtime_plan.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -277,13 +278,14 @@ bool BikeMbAiAssistant_Init(void) {
   if (!BikeMbCloudWorker_Init(onCloudResult)) {
     return false;
   }
-  BaseType_t created = xTaskCreate(
+  BaseType_t created = xTaskCreatePinnedToCore(
       assistantTask,
       "bikemb_ai",
       BikeMbAiConfig::kAssistantStackBytes,
       nullptr,
       2,
-      nullptr);
+      nullptr,
+      BIKE_RUNTIME_CORE_RUNTIME);
   return created == pdPASS;
 #endif
 }

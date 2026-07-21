@@ -7,6 +7,7 @@
 #include "platform/bike_platform.h"
 #include "platform/lvgl_port.h"
 #include "runtime/bike_event.h"
+#include "runtime/bike_runtime_plan.h"
 
 namespace {
 
@@ -14,7 +15,7 @@ constexpr const char *TAG = "BikeMB.UiService";
 constexpr uint32_t kUiQueueWaitMs = 5;
 constexpr uint32_t kUiTaskStackWords = 8192;
 constexpr UBaseType_t kUiTaskPriority = 5;
-constexpr BaseType_t kUiTaskCore = 1;
+constexpr BaseType_t kUiTaskCore = BIKE_RUNTIME_CORE_UI;
 
 QueueHandle_t g_eventQueue = nullptr;
 TaskHandle_t g_uiTask = nullptr;
@@ -26,6 +27,9 @@ void HandleEvent(const BikeEvent &event) {
       break;
     case BikeEventType::RenderStatsUpdate:
       DashboardApp_SetRenderWorkMs(event.value);
+      break;
+    case BikeEventType::ShowAiPage:
+      DashboardApp_ShowAiPage();
       break;
     case BikeEventType::SystemTick:
     case BikeEventType::DiagnosticRequest:

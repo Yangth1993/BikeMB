@@ -24,6 +24,8 @@ BikeMB 需要在 ESP32-S3R8、16 MB Flash、8 MB PSRAM 和现有 Arduino + LVGL 
 8. 敏感配置来自 Git 忽略的本地编译配置。TLS 必须验证证书，日志必须脱敏。
 9. 录音少于 300 ms 视为取消；忙态按下会使旧 request 失效并开始新录音；10 秒录音上限后的松键不得提交截断音频。
 
+后续决策：ADR-0004 已将正式 `MusicService`、产品音乐流和点歌的开发顺序调整为“先完成 ESP-IDF 双核迁移”。上面的第 6 项继续定义音乐接口形态，但不再授权在当前 Arduino 产品路径中实现正式 MusicService。
+
 ## Alternatives considered
 
 ### 全流式 WebSocket STT/TTS

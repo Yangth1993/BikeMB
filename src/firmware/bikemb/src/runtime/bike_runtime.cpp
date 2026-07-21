@@ -2,9 +2,26 @@
 
 #include "freertos/task.h"
 
+#include "ai/ai_assistant.h"
+#include "audio/audio_capture_self_test.h"
+#include "audio/audio_prompts.h"
+#include "audio/audio_self_test.h"
+#include "audio/audio_session.h"
+#include "input/ai_button.h"
+#include "network/wifi_service.h"
 #include "platform/bike_platform.h"
 #include "platform/board_support.h"
+#include "runtime/bike_runtime_plan.h"
 #include "services/ui_service.h"
+#include "voice/voice_commands.h"
+
+#ifndef BIKE_MB_ENABLE_AI_ASSISTANT
+#define BIKE_MB_ENABLE_AI_ASSISTANT 0
+#endif
+
+#ifndef BIKE_MB_ENABLE_AUDIO_SESSION
+#define BIKE_MB_ENABLE_AUDIO_SESSION 0
+#endif
 
 namespace {
 
@@ -13,7 +30,7 @@ constexpr uint32_t kRuntimePollMs = 5;
 constexpr uint32_t kEventQueueLength = 16;
 constexpr uint32_t kRuntimeTaskStackWords = 4096;
 constexpr UBaseType_t kRuntimeTaskPriority = 4;
-constexpr BaseType_t kRuntimeTaskCore = 0;
+constexpr BaseType_t kRuntimeTaskCore = BIKE_RUNTIME_CORE_RUNTIME;
 
 QueueHandle_t g_eventQueue = nullptr;
 TaskHandle_t g_runtimeTask = nullptr;
@@ -29,6 +46,10 @@ void RuntimeTickTask(void *arg) {
 
   while (true) {
     const uint32_t nowMs = BikePlatform_Millis();
+
+#if BIKE_MB_ENABLE_AI_ASSISTANT
+    BikeMbAiButton_Tick(nowMs);
+#endif
 
     const BikeEvent systemTick = {
         .type = BikeEventType::SystemTick,
@@ -67,6 +88,21 @@ void BikeRuntime_Start() {
   }
 
   UiService_Start(g_eventQueue);
+
+#if BIKE_MB_ENABLE_AUDIO_SESSION
+  BikeMbAudioSession_Init();
+#endif
+
+#if BIKE_MB_ENABLE_AI_ASSISTANT
+  BikeMbAiAssistant_Init();
+  BikeMbWifiService_Init();
+  BikeMbAiButton_Init();
+#endif
+
+  BikeMbAudioCaptureSelfTest_Init();
+  BikeMbAudioPrompts_Init();
+  BikeMbAudioSelfTest_Init();
+  BikeMbVoiceCommands_Init();
 
   if (g_runtimeTask == nullptr) {
     xTaskCreatePinnedToCore(

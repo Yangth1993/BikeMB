@@ -6,6 +6,7 @@ enum class BikeEventType : uint8_t {
   SystemTick,
   DashboardTick,
   RenderStatsUpdate,
+  ShowAiPage,
   DiagnosticRequest,
 };
 

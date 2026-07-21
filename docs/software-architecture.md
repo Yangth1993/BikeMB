@@ -11,6 +11,88 @@
 
 目前 UI、触摸、音频自检、档位播报、直接语音识别和 AI 助手都以 Arduino 路径为主。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。ESP-IDF 路径已有 Runtime/Event/Service 骨架，但 AI、音频和语音没有接入该运行路径。
 
+## Bootloader 与双核启动链路
+
+ESP32-S3 上电后不是直接执行 BikeMB 的 `setup()` 或 `app_main()`。启动链路包含 ROM 一级 Bootloader、Flash 二级 Bootloader、应用 CPU0 入口、CPU1 入口和 FreeRTOS task 五层。
+
+```mermaid
+sequenceDiagram
+  participant ROM as "ROM Bootloader（CPU0）"
+  participant BL as "二级 Bootloader（Flash）"
+  participant CPU0 as "应用 CPU0"
+  participant CPU1 as "应用 CPU1"
+  participant RTOS as "FreeRTOS / app_main"
+
+  ROM->>ROM: 复位、采样 strapping pins
+  alt GPIO0 在复位时为低电平
+    ROM->>ROM: 进入 ROM 下载模式
+  else 正常 Flash 启动
+    ROM->>BL: 加载并跳到 Bootloader call_start_cpu0
+    BL->>BL: 初始化 Flash，读取分区表和 otadata
+    BL->>BL: 选择并校验 app0/app1，映射 IROM/DROM
+    BL->>CPU0: 跳到应用镜像 entry_addr = call_start_cpu0
+    CPU0->>CPU1: 设置 boot address = call_start_cpu1，并释放 CPU1
+    CPU1->>CPU1: 完成本核初始化并等待 CPU0
+    CPU0->>RTOS: start_cpu0_default -> esp_startup_start_app
+    RTOS->>RTOS: 创建 main_task，启动 CPU0 scheduler
+    CPU1->>RTOS: 启动 CPU1 scheduler
+    RTOS->>RTOS: main_task 调用 app_main
+  end
+```
+
+### 启动阶段和源码入口
+
+| 阶段 | 运行核心 | 关键入口 | 责任和下一跳 |
+| --- | --- | --- | --- |
+| ROM 一级 Bootloader | CPU0 | 芯片 Mask ROM，源码不在本仓库 | 复位后最先运行，采样 GPIO0 等 strapping pin；正常启动时从 Flash 加载二级 Bootloader。ROM 本身不占外部 Flash 分区。 |
+| Flash 二级 Bootloader | CPU0 | `bootloader_start.c::call_start_cpu0()` | 执行最小硬件/Flash 初始化，读取 Partition Table 和 `otadata`，选择 OTA app，校验镜像并加载 RAM 段、映射 IROM/DROM。 |
+| Bootloader 跳转应用 | CPU0 | `bootloader_utility_load_boot_image()` -> `unpack_load_app()` -> `set_cache_and_start_app()` | 从应用镜像头读取 `entry_addr`，最终以函数指针调用该地址；正常情况下不返回。当前应用链接脚本声明 `ENTRY(call_start_cpu0)`。 |
+| 应用早期启动 | CPU0 | `cpu_start.c::call_start_cpu0()` | 初始化应用 BSS、cache、PSRAM 和系统组件，并在 `system_early_init()` 中拉起 CPU1。 |
+| 第二核心启动 | CPU1 | `cpu_start.c::call_start_cpu1()` | CPU0 把 CPU1 boot address 设置为该函数，再复位、启用并解除 stall；CPU1 完成本核 TLS、异常向量、中断和 cache 初始化后等待 CPU0。 |
+| FreeRTOS 启动 | CPU0 + CPU1 | `start_cpu0_default()` / `start_cpu_other_cores()` | CPU0 创建 `main_task` 并调用 `vTaskStartScheduler()`；CPU1 等 CPU0 scheduler 就绪后调用本核 `xPortStartScheduler()`。 |
+| 框架应用入口 | `main_task` 默认在 CPU0 | `app_main()` | Arduino 构建进入 framework 的 `app_main()`，再创建 Core 1 的 `loopTask`；ESP-IDF 构建进入 BikeMB 的 `app_main()`。 |
+
+二级 Bootloader 镜像和应用镜像中都存在名为 `call_start_cpu0` 的符号，但它们分别链接进两个独立镜像。前者是 Bootloader 自己的入口，后者是被选中应用的入口，不能按同一个 C 函数调用链理解。
+
+当前依赖版本的源码定位：
+
+- 二级 Bootloader 入口：[bootloader_start.c](/D:/MyProject/BikeMB/.pio-home/packages/framework-espidf/components/bootloader/subproject/main/bootloader_start.c:26)
+- 应用选择、校验和最终跳转：[bootloader_utility.c](/D:/MyProject/BikeMB/.pio-home/packages/framework-espidf/components/bootloader_support/src/bootloader_utility.c:579)
+- 应用 CPU0/CPU1 早期入口：[cpu_start.c](/D:/MyProject/BikeMB/.pio-home/packages/framework-espidf/components/esp_system/port/cpu_start.c:218)
+- 两核 startup function 分派：[startup.c](/D:/MyProject/BikeMB/.pio-home/packages/framework-espidf/components/esp_system/startup.c:37)
+- `main_task` 创建和两核 scheduler 启动：[app_startup.c](/D:/MyProject/BikeMB/.pio-home/packages/framework-espidf/components/freertos/app_startup.c:64)
+- Arduino `app_main()` 和 `loopTask`：[main.cpp](/D:/MyProject/BikeMB/.pio-home/packages/framework-arduinoespressif32/cores/esp32/main.cpp:89)
+
+当前项目配置未启用 Secure Boot 和 Flash Encryption。二级 Bootloader 仍会检查镜像头、segment、checksum/hash 等结构完整性，但这不等同于验证“镜像一定由 BikeMB 官方签名”。未来启用签名信任链或加密启动时，必须单独更新 bootloader 配置、密钥管理、烧录流程和恢复策略。
+
+### 从 `app_main()` 到 BikeMB task
+
+```mermaid
+flowchart TB
+  MAIN_TASK["FreeRTOS main_task<br/>CPU0"] --> APP_MAIN{"构建框架"}
+  APP_MAIN -->|Arduino| ARDUINO_MAIN["Arduino app_main<br/>initArduino()"]
+  ARDUINO_MAIN --> LOOP_TASK["loopTask / Core 1<br/>BikeMB setup() -> loop()"]
+  APP_MAIN -->|ESP-IDF| IDF_MAIN["BikeMB app_main() / CPU0"]
+  IDF_MAIN --> RUNTIME["bike_runtime / Core 0<br/>事件、状态、服务编排"]
+  IDF_MAIN --> UI_TASK["bike_ui / Core 1<br/>LVGL 唯一 owner"]
+```
+
+这里的 CPU0 和 CPU1 是 ESP32-S3 的两个处理核心，但它们共享同一个被选中的 BikeMB 应用镜像和地址空间，并不是分别烧录两个应用。`bike_runtime` 和 `bike_ui` 是计划固定到不同核心的 FreeRTOS task；二级 Bootloader 不创建这些 task，也不会直接调用 `setup()`。
+
+### 正式 MusicService 的架构门禁
+
+根据 [ADR-0004](/D:/MyProject/BikeMB/docs/architecture/adr/0004-idf-dual-core-before-music-service.md)，完成 ESP-IDF 双核迁移是正式 `MusicService`、产品音乐流和点歌开发的强制前置条件。门禁关闭期间可以做隔离的 MP3 decoder、HTTPS stream 和资源占用 spike，也可以维护接口、mock 与测试，但不得把 `MusicService` 或点歌行为接入产品运行路径。
+
+门禁只有在以下条件全部满足后才能关闭：
+
+1. 产品固件从 BikeMB `app_main()` 启动，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，Arduino 路径降为 bring-up/回归用途。
+2. LVGL 只由 `bike_ui` 访问；跨核输入、状态和 UI 更新只通过 queue/event/snapshot 传递。
+3. AI control、Cloud/Wi-Fi、AudioSession、语音输入输出都由 ESP-IDF runtime/service 管理，不再从 Arduino `setup()` / `loop()` 启动或轮询。
+4. I2S0、ES7210 和 ES8311 仍只有一个运行时 owner；DMA buffer 不跨队列复制整段音频，取消和超时路径可回收所有权。
+5. 双核构建、合同测试和板级启动/触摸/显示/录音/TTS 回归通过，并记录 heap、PSRAM、task stack、UI 延迟和 audio underrun 基线。
+
+当前状态：**门禁未满足**。代码层第一阶段已经完成：ESP-IDF `app_main()` 会启动 `bike_runtime` Core 0 和 `bike_ui` Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 已固定到 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task 执行。门禁仍需板级启动/触摸/显示/录音/TTS 回归和资源基线确认；所以 `MusicService` 和点歌保持“计划中”，不应作为开发工程师的当前实现任务。
+
 ## 总体模块图
 
 ```mermaid
@@ -459,8 +541,7 @@ sequenceDiagram
 ```mermaid
 flowchart TB
   subgraph DEFAULT_FLASH["默认 / 音频播报环境 Flash 16MB"]
-    D0["0x000000<br/>ROM/reserved<br/>芯片固定启动区域"]
-    D1["0x001000<br/>Bootloader<br/>二级启动加载器"]
+    D1["0x000000 - 0x007FFF<br/>Bootloader 区域<br/>ESP32-S3 二级启动加载器"]
     D2["0x008000<br/>Partition Table<br/>分区表"]
     D3["0x009000 - 0x00DFFF<br/>nvs 20KB<br/>参数/校准/小型 KV"]
     D4["0x00E000 - 0x00FFFF<br/>otadata 8KB<br/>OTA 启动选择状态"]
@@ -469,15 +550,14 @@ flowchart TB
     D7["0xC90000 - 0xFEFFFF<br/>spiffs 3.375MB<br/>文件系统资源"]
     D8["0xFF0000 - 0xFFFFFF<br/>coredump 64KB<br/>崩溃转储"]
   end
-  D0 --> D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
+  D1 --> D2 --> D3 --> D4 --> D5 --> D6 --> D7 --> D8
 ```
 
 默认分区说明：
 
 | 区域 | 内容 | BikeMB 当前用途 |
 | --- | --- | --- |
-| ROM/reserved | Flash 起始保留区和芯片启动相关固定区域。 | 不由应用直接写入。 |
-| Bootloader | ESP32 二级启动加载器。 | 负责读取分区表并启动选中的 app。 |
+| Bootloader | ESP32-S3 二级启动加载器；当前 PlatformIO 构建从 Flash `0x000000` 烧录，分区表前空间保留给该镜像。 | 负责读取分区表并启动选中的 app。芯片 ROM 一级 Bootloader 位于 Mask ROM，不属于 Flash 布局。 |
 | Partition Table | 分区表。 | 描述 `nvs`、`app0/app1`、`spiffs` 等区域位置。 |
 | `nvs` | 非易失键值存储。 | 后续可放设置、校准值、累计里程等小数据。 |
 | `otadata` | OTA 状态区。 | 记录当前应从 `app0` 还是 `app1` 启动。 |
@@ -494,8 +574,7 @@ flowchart TB
 ```mermaid
 flowchart TB
   subgraph SR_FLASH["ESP-SR voice-direct-test Flash 16MB"]
-    S0["0x000000<br/>ROM/reserved<br/>芯片固定启动区域"]
-    S1["0x001000<br/>Bootloader<br/>二级启动加载器"]
+    S1["0x000000 - 0x007FFF<br/>Bootloader 区域<br/>ESP32-S3 二级启动加载器"]
     S2["0x008000<br/>Partition Table<br/>ESP-SR 分区表"]
     S3["0x009000 - 0x00DFFF<br/>nvs 20KB<br/>参数/校准/小型 KV"]
     S4["0x00E000 - 0x00FFFF<br/>otadata 8KB<br/>OTA 启动选择状态"]
@@ -505,15 +584,14 @@ flowchart TB
     S8["0xC10000 - 0xFEFFFF<br/>model / srmodels.bin 3.875MB<br/>ESP-SR 模型"]
     S9["0xFF0000 - 0xFFFFFF<br/>coredump 64KB<br/>崩溃转储"]
   end
-  S0 --> S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
+  S1 --> S2 --> S3 --> S4 --> S5 --> S6 --> S7 --> S8 --> S9
 ```
 
 ESP-SR 分区说明：
 
 | 区域 | 内容 | BikeMB 当前用途 |
 | --- | --- | --- |
-| ROM/reserved | Flash 起始保留区和芯片启动相关固定区域。 | 不由应用直接写入。 |
-| Bootloader | ESP32 二级启动加载器。 | 读取 ESP-SR 分区表并启动选中的语音测试固件。 |
+| Bootloader | ESP32-S3 二级启动加载器；从 Flash `0x000000` 开始，分区表前空间保留给该镜像。 | 读取 ESP-SR 分区表并启动选中的语音测试固件。芯片 ROM 一级 Bootloader 不在 Flash 中。 |
 | Partition Table | `esp_sr_16.csv` 对应的分区表。 | 为 `model` 分区留出固定地址。 |
 | `nvs` | 非易失键值存储。 | 后续可复用为设置、校准值、用户偏好。 |
 | `otadata` | OTA 状态区。 | 管理 `app0/app1` 启动选择。 |
@@ -594,20 +672,22 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 
 - [bike_runtime.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/runtime/bike_runtime.cpp)
 - [bike_event.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/runtime/bike_event.h)
+- [bike_runtime_plan.h](/D:/MyProject/BikeMB/src/firmware/bikemb/src/runtime/bike_runtime_plan.h)
 - [ui_service.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/services/ui_service.cpp)
 - [metrics_service.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/services/metrics_service.cpp)
 
 | 函数 | 作用 |
 | --- | --- |
 | `BikeRuntime_Init()` | 创建 event queue，并调用 `BoardSupport_Init()`。 |
-| `BikeRuntime_Start()` | 启动 `UiService` 和 `RuntimeTickTask`。 |
+| `BikeRuntime_Start()` | 启动 `UiService`、AI/Wi-Fi/AudioSession 初始化边界和 `RuntimeTickTask`。 |
 | `BikeRuntime_PostEvent(...)` | 向固定 FreeRTOS queue 投递事件；队列满时丢弃低优先级 tick。 |
 | `BikeRuntime_GetEventQueue()` | 返回 queue handle。 |
 | `BikeRuntime_GetDroppedLowPriorityEvents()` | 返回低优先级事件丢弃计数。 |
+| `BikeRuntime_FindServicePlan(...)` | 返回 host-testable 的 task/core 所有权规划。 |
 | `UiService_Start(...)` | 启动拥有 LVGL 的 UI task。 |
 | `UiTask(...)` | 初始化 LVGL/dashboard，消费事件，并调用 `LvglPort_Run()`。 |
 
-当前边界：ESP-IDF runtime 还不是音频/语音的验证路径。AudioSession 和 AI 语音闭环目前依赖 Arduino Wi-Fi、`WiFiClientSecure` 和 `ESP_I2S`，迁移前需要新增对应 ESP-IDF transport/audio adapter。
+当前边界：ESP-IDF runtime 已经承接产品入口、Core 0/Core 1 task 归属和 AI 页面跨核事件，但还不是音频/语音的完整验证路径。AudioSession 的真实 codec/I2S 实现和云端真实 transport 仍来自 Arduino Wi-Fi、`WiFiClientSecure` 和 `ESP_I2S` 路径；关闭 ADR-0004 前需要新增对应 ESP-IDF transport/audio adapter，并完成板级回归。
 
 ## 验证入口
 
@@ -622,6 +702,7 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `test_lvgl_port_contract.py` | LVGL display/touch port 边界。 |
 | `test_lvgl_simulator_contract.py` | PC simulator 与固件共享 dashboard UI 源码。 |
 | `test_runtime_contract.py` | ESP-IDF runtime/event/service 骨架。 |
+| `test_runtime_plan_contract.py` | Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。 |
 | `test_ai_framework.py` | AI 配置、BOOT 键 reducer、AI 状态机、UI 映射、task/queue 所有权和 main feature gate。 |
 | `test_dashboard_ai_ui_contract.py` | Dashboard 只从 snapshot 派生 AI 页面，不直接依赖 cloud/audio/Assistant 命令接口。 |
 | `test_wifi_service_contract.py` | Wi-Fi service 不阻塞启动、配置隔离、重连 reducer 和 Assistant 状态发布。 |

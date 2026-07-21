@@ -7,3 +7,6 @@ list(APPEND EXTRA_COMPONENT_DIRS
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(bikemb)
+
+idf_component_get_property(esp_lcd_lib esp_lcd COMPONENT_LIB)
+target_compile_options(${esp_lcd_lib} PRIVATE -O0)

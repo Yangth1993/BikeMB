@@ -214,6 +214,8 @@ Wi-Fi task 每秒轮询，断开时每 10 秒重试，只通过 `BikeMbAiAssista
 
 HTTPS MP3、Stream Player、Music Service 和点歌 resolver 当前均未实现。不要在代码中调用先前文档出现过的 `BikeMbAiAssistant_PlayMusicUrl`、`BikeMbAudioSession_PlayMp3Stream` 等占位接口；新增音乐行为前应先更新 OpenSpec 和 ADR。
 
+ADR-0004 将完成 ESP-IDF 双核迁移设为正式 MusicService、产品音乐流和点歌开发的强制前置条件。门禁关闭前允许维护接口草案、host mock 和隔离技术 spike，但不得冻结生产接口或接入产品运行路径。
+
 ## 配置边界
 
 | 配置 | 来源 | 是否允许进入 Git |

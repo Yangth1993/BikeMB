@@ -10,6 +10,8 @@ DASHBOARD_CORE = "src/firmware/bikemb/src/app/dashboard_view_core.c"
 DASHBOARD_PAGES = "src/firmware/bikemb/src/app/dashboard_pages.c"
 AI_UI_STATE = "src/firmware/bikemb/src/app/ai_assistant_ui_state.cpp"
 AI_BUTTON = "src/firmware/bikemb/src/input/ai_button.cpp"
+UI_SERVICE = "src/firmware/bikemb/src/services/ui_service.cpp"
+RUNTIME_EVENT = "src/firmware/bikemb/src/runtime/bike_event.h"
 
 
 def test_dashboard_renders_dedicated_ai_page_from_snapshot_state() -> None:
@@ -45,6 +47,8 @@ def test_ai_button_opens_dedicated_ai_page_on_press() -> None:
     core_header = read_repo_text(DASHBOARD_CORE_HEADER)
     core = read_repo_text(DASHBOARD_CORE)
     button = read_repo_text(AI_BUTTON)
+    ui_service = read_repo_text(UI_SERVICE)
+    runtime_event = read_repo_text(RUNTIME_EVENT)
 
     check("DashboardApp_ShowAiPage" in app_header, "Dashboard app must expose an AI page command.")
     check("DashboardView_ShowAiPage" in app, "Dashboard app AI page command must delegate to the view.")
@@ -52,12 +56,14 @@ def test_ai_button_opens_dedicated_ai_page_on_press() -> None:
     check("BikeMbDashboardView_ShowAiPage" in view, "Dashboard view wrapper must delegate AI page selection to core.")
     check("BikeMbDashboardView_ShowAiPage" in core_header, "Dashboard core must expose an AI page command.")
     check("kAiPageIndex = 1" in core, "Dashboard core must route AI command to the dedicated AI page index.")
-    check('"../app/dashboard_app.h"' in button, "AI button input must route page commands through DashboardApp.")
-    check("DashboardApp_ShowAiPage();" in button, "AI button press must immediately open the AI page.")
+    check("ShowAiPage" in runtime_event, "Runtime event bus must expose an AI page navigation event.")
+    check("BikeRuntime_PostEvent" in button, "AI button input must route page commands through the runtime queue.")
+    check("DashboardApp_ShowAiPage" not in button, "AI button must not touch DashboardApp from the runtime core.")
+    check("DashboardApp_ShowAiPage();" in ui_service, "bike_ui must own the actual AI page switch.")
     press = button.index("BIKE_MB_AI_BUTTON_EVENT_PRESSED")
-    show = button.index("DashboardApp_ShowAiPage();", press)
+    show = button.index("BikeRuntime_PostEvent", press)
     notify = button.index("BikeMbAiAssistant_OnButtonPressed();", press)
-    check(show < notify, "AI page should open before the assistant starts recording.")
+    check(show < notify, "AI page event should be posted before the assistant starts recording.")
 
 
 if __name__ == "__main__":

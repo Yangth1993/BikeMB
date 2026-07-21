@@ -4,6 +4,7 @@
 
 #include "../ai/ai_assistant.h"
 #include "../ai/ai_config.h"
+#include "../runtime/bike_runtime_plan.h"
 #include "wifi_service_core.h"
 
 #include "freertos/FreeRTOS.h"
@@ -140,13 +141,14 @@ bool BikeMbWifiService_Init(void) {
   if (s_task != nullptr) {
     return true;
   }
-  const BaseType_t created = xTaskCreate(
+  const BaseType_t created = xTaskCreatePinnedToCore(
       wifiTask,
       "bikemb_wifi",
       kWifiServiceStackBytes,
       nullptr,
       1,
-      &s_task);
+      &s_task,
+      BIKE_RUNTIME_CORE_RUNTIME);
   return created == pdPASS;
 #endif
 }

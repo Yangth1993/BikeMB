@@ -39,6 +39,7 @@ set(BIKEMB_SRCS
     platform/board_support.cpp
     platform/lvgl_port.cpp
     runtime/bike_runtime.cpp
+    runtime/bike_runtime_plan.cpp
     services/metrics_service.cpp
     services/ui_service.cpp
     voice/voice_commands.cpp

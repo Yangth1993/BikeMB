@@ -552,6 +552,7 @@
       </div>
       <nav class="nav">
         <a href="#runtime">运行路径</a>
+        <a href="#boot-flow">启动链路 <span class="toc-tag">new</span></a>
         <a href="#main-loop">主循环</a>
         <a href="#ui">UI 框架</a>
         <a href="#ai-assistant">AI 助手 <span class="toc-tag">current</span></a>
@@ -590,9 +591,50 @@
           </article>
           <article class="card">
             <h3>迁移路径：ESP-IDF</h3>
-            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。目前已有 Runtime/Event/Service 骨架，但 AI、音频和语音尚未接入这条运行路径。</p>
+            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。当前已把 Runtime/UI/AI/Cloud/Wi-Fi 放入明确的 Core 0/Core 1 运行模型；真实音频 codec/I2S 和云 transport 仍需继续迁移验证。</p>
           </article>
         </div>
+      </section>
+
+      <section id="boot-flow">
+        <div class="section-head">
+          <h2>Bootloader 与双核启动链路</h2>
+          <p>ESP32-S3 先从芯片 ROM 启动，再进入 Flash 二级 Bootloader。二级 Bootloader 只跳到应用 CPU0 入口；CPU1 由应用侧 CPU0 拉起。</p>
+        </div>
+        <div class="flow">
+          <div class="node"><b>ROM Bootloader</b><span>CPU0 复位后执行；采样 GPIO0。正常 Flash boot 时加载二级 Bootloader，按住 BOOT 复位则进入 ROM 下载模式。</span></div>
+          <div class="node"><b>二级 Bootloader</b><span>读取分区表与 otadata，选择并校验 app0/app1，加载 RAM 段并映射 IROM/DROM。</span></div>
+          <div class="node"><b>应用 call_start_cpu0</b><span>Bootloader 读取应用 entry_addr 后跳转到这里，初始化 BSS、cache、PSRAM 和系统组件。</span></div>
+          <div class="node"><b>应用 call_start_cpu1</b><span>CPU0 设置 CPU1 boot address，复位、启用并解除 stall；CPU1 完成本核初始化后等待 CPU0。</span></div>
+          <div class="node"><b>FreeRTOS / app_main</b><span>CPU0 创建 main_task 并启动 scheduler，CPU1 再启动本核 scheduler；main_task 最终调用 app_main。</span></div>
+        </div>
+        <table style="margin-top:14px">
+          <tr><th>阶段</th><th>运行核心</th><th>入口/动作</th><th>下一跳</th></tr>
+          <tr><td>ROM 一级 Bootloader</td><td>CPU0</td><td>芯片 Mask ROM，不占外部 Flash 分区。</td><td>加载 Flash <code>0x000000</code> 的二级 Bootloader。</td></tr>
+          <tr><td>Flash 二级 Bootloader</td><td>CPU0</td><td><code>bootloader_start.c::call_start_cpu0()</code></td><td><code>bootloader_utility_load_boot_image()</code> 选择、校验并加载应用。</td></tr>
+          <tr><td>应用早期启动</td><td>CPU0</td><td><code>cpu_start.c::call_start_cpu0()</code></td><td>拉起 CPU1，并分派到 <code>start_cpu0_default()</code>。</td></tr>
+          <tr><td>第二核心启动</td><td>CPU1</td><td><code>cpu_start.c::call_start_cpu1()</code></td><td><code>start_cpu_other_cores()</code> 等待 CPU0 scheduler。</td></tr>
+          <tr><td>业务入口</td><td>两核</td><td>CPU0/CPU1 各自运行 FreeRTOS scheduler；<code>main_task</code> 在 CPU0 调用 <code>app_main()</code>。</td><td>Arduino 创建 Core 1 <code>loopTask</code>；ESP-IDF 创建 Core 0 <code>bike_runtime</code> 和 Core 1 <code>bike_ui</code>。</td></tr>
+        </table>
+        <div class="grid two" style="margin-top:14px">
+          <article class="card">
+            <h3>同名入口不是同一函数</h3>
+            <p>Bootloader 镜像和应用镜像各自链接一个 <code>call_start_cpu0</code>。前者是二级 Bootloader 入口，后者是应用入口，属于两个独立 ELF。</p>
+          </article>
+          <article class="card">
+            <h3>双核共享一个应用镜像</h3>
+            <p>CPU0 和 CPU1 共享被选中的 BikeMB 应用镜像与地址空间，不是分别烧录两个 app。Bootloader 也不会创建 <code>bike_runtime</code> 或 <code>bike_ui</code>。</p>
+          </article>
+        </div>
+        <div class="callout">当前项目未启用 Secure Boot 和 Flash Encryption。Bootloader 的镜像结构/checksum/hash 校验不能当作 BikeMB 签名身份验证；未来启用安全启动时需要单独设计密钥、烧录和恢复流程。</div>
+        <div class="callout good"><strong>正式音乐开发门禁：</strong>完成 ESP-IDF 双核迁移并通过 ADR-0004 验收后，才能开始正式 <code>MusicService</code>、产品音乐流和点歌开发。门禁关闭前只允许隔离的 decoder/HTTPS stream spike、接口和 mock。</div>
+        <table style="margin-top:14px">
+          <tr><th>ADR-0004 验收项</th><th>完成标准</th></tr>
+          <tr><td>任务归属</td><td><code>bike_runtime</code> 固定 Core 0，<code>bike_ui</code> 固定 Core 1；产品路径由 BikeMB <code>app_main()</code> 启动。</td></tr>
+          <tr><td>UI 与跨核通信</td><td>LVGL 只在 <code>bike_ui</code> 访问，其他 task 使用 queue/event/snapshot。</td></tr>
+          <tr><td>AI/音频迁移</td><td>AI、Cloud/Wi-Fi、AudioSession 和语音由 ESP-IDF runtime/service 管理，不依赖 Arduino <code>setup()/loop()</code>。</td></tr>
+          <tr><td>验证证据</td><td>双核 build/test 和板级启动、触摸、显示、录音、TTS、取消回归通过，并记录 heap、PSRAM、stack、UI 延迟和 underrun 基线。</td></tr>
+        </table>
       </section>
 
       <section id="module-map">
@@ -825,8 +867,7 @@
         <div class="partition-layout">
           <div class="partition-stack">
             <h3>默认 / 音频播报环境</h3>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x000000</span><span><span class="partition-name">ROM / reserved</span><span class="partition-note">芯片固定启动区域，不由应用直接写入。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x001000</span><span><span class="partition-name">Bootloader</span><span class="partition-note">二级启动加载器，读取分区表并启动 app。</span></span></div>
+            <div class="partition-block" style="--h:48px"><span class="partition-addr">0x000000<br>至 0x007FFF</span><span><span class="partition-name">Bootloader 区域</span><span class="partition-note">ESP32-S3 二级启动加载器从 0x000000 烧录；芯片 ROM 一级 Bootloader 不在 Flash 中。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">记录各分区名称、类型、偏移和大小。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、累计里程等小型 KV 数据。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
@@ -848,8 +889,7 @@
         <div class="partition-layout">
           <div class="partition-stack">
             <h3>ESP-SR voice-direct-test</h3>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x000000</span><span><span class="partition-name">ROM / reserved</span><span class="partition-note">芯片固定启动区域，不由应用直接写入。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x001000</span><span><span class="partition-name">Bootloader</span><span class="partition-note">二级启动加载器。</span></span></div>
+            <div class="partition-block" style="--h:48px"><span class="partition-addr">0x000000<br>至 0x007FFF</span><span><span class="partition-name">Bootloader 区域</span><span class="partition-note">ESP32-S3 二级启动加载器；ROM 一级 Bootloader 位于芯片 Mask ROM。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">来自 <code>esp_sr_16.csv</code>，为模型分区留出固定位置。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、用户偏好。</span></span></div>
             <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
@@ -875,16 +915,18 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
       <section id="idf">
         <div class="section-head">
           <h2>ESP-IDF Runtime 骨架</h2>
-          <p>这条路径用于后续迁移，不是当前音频/语音验证主路径。</p>
+          <p>这条路径已经承接产品入口、task/core 归属和 UI 跨核事件；完整音频/语音验证仍需后续板级迁移。</p>
         </div>
         <table>
           <tr><th>函数</th><th>作用</th></tr>
           <tr><td><code>BikeRuntime_Init()</code></td><td>创建 event queue，并调用 <code>BoardSupport_Init()</code>。</td></tr>
-          <tr><td><code>BikeRuntime_Start()</code></td><td>启动 <code>UiService</code> 和 <code>RuntimeTickTask</code>。</td></tr>
+          <tr><td><code>BikeRuntime_Start()</code></td><td>启动 <code>UiService</code>、AI/Wi-Fi/AudioSession 初始化边界和 <code>RuntimeTickTask</code>。</td></tr>
           <tr><td><code>BikeRuntime_PostEvent(...)</code></td><td>向固定 FreeRTOS queue 投递事件；队列满时丢弃低优先级 tick。</td></tr>
+          <tr><td><code>BikeRuntime_FindServicePlan(...)</code></td><td>返回 host-testable 的 task/core 所有权规划。</td></tr>
           <tr><td><code>UiService_Start(...)</code></td><td>启动拥有 LVGL 的 UI task。</td></tr>
           <tr><td><code>UiTask(...)</code></td><td>初始化 LVGL/dashboard，消费事件，并调用 <code>LvglPort_Run()</code>。</td></tr>
         </table>
+        <div class="callout">当前仍未满足 ADR-0004：代码层第一阶段已固定 <code>bike_runtime</code> Core 0、<code>bike_ui</code> Core 1，并将 AI/Cloud/Wi-Fi worker 固定到 Core 0；但真实音频 codec/I2S、云 transport、板级回归和资源基线尚未完成。正式 MusicService 和点歌因此保持阻塞。</div>
       </section>
 
       <section id="tests">
@@ -899,6 +941,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>test_voice_commands_contract.py</code></td><td>ESP-SR API、命令词、模型烧录脚本、语音环境分区配置。</td></tr>
           <tr><td><code>test_dashboard_no_auto_page_contract.py</code></td><td>防止 demo metrics 再引入自动翻页。</td></tr>
           <tr><td><code>test_runtime_contract.py</code></td><td>ESP-IDF runtime/event/service 骨架。</td></tr>
+          <tr><td><code>test_runtime_plan_contract.py</code></td><td>Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。</td></tr>
           <tr><td><code>test_ai_framework.py</code></td><td>AI 配置、BOOT reducer、状态机、UI 映射、task/queue 所有权和 main feature gate。</td></tr>
           <tr><td><code>test_dashboard_ai_ui_contract.py</code></td><td>独立 AI 页面只读取 UI-facing snapshot，不直接调用 cloud、audio 或 Assistant 命令。</td></tr>
           <tr><td><code>test_wifi_service_contract.py</code></td><td>异步 Wi-Fi 初始化、密钥边界、状态发布和重试 reducer。</td></tr>
@@ -942,8 +985,8 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
             <p>HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 仍属于目标架构。</p>
           </article>
           <article class="card">
-            <h3>ESP-IDF 尚未接入 AI</h3>
-            <p>ESP-IDF Runtime/Event/Service 已存在，但 AI、Wi-Fi、音频和语音实验仍以 Arduino 路径为主。</p>
+            <h3>ESP-IDF 第一阶段已接入 AI</h3>
+            <p>AI、Cloud 和 Wi-Fi task 已固定到 Core 0，AI 页面切换经 runtime event 交给 Core 1 UI；真实音频和云 transport 仍待迁移。</p>
           </article>
         </div>
       </section>

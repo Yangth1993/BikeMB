@@ -4,6 +4,7 @@
 #include "cosyvoice_tts_adapter.h"
 #include "qwen_asr_adapter.h"
 #include "qwen_chat_adapter.h"
+#include "runtime/bike_runtime_plan.h"
 
 #include <string.h>
 
@@ -906,13 +907,14 @@ bool BikeMbCloudWorker_Init(BikeMbCloudResultSink sink) {
     if (s_queue == nullptr) {
       return false;
     }
-    BaseType_t created = xTaskCreate(
+    BaseType_t created = xTaskCreatePinnedToCore(
         cloudTask,
         "bikemb_cloud",
         BikeMbAiConfig::kCloudWorkerStackBytes,
         nullptr,
         1,
-        nullptr);
+        nullptr,
+        BIKE_RUNTIME_CORE_RUNTIME);
     if (created != pdPASS) {
       return false;
     }

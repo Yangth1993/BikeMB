@@ -15,7 +15,7 @@
 | Audio Prompts | 档位预录语音播报测试路径 | `src/audio/audio_prompts.*` |
 | Audio Self Test | 喇叭、麦克风、串口模拟命令验证 | `src/audio/audio_self_test.*` |
 | Voice Commands | ESP-SR 直接语音命令测试路径 | `src/voice/voice_commands.*` |
-| Runtime | ESP-IDF 事件队列和服务骨架 | `src/runtime/*`, `src/services/*` |
+| Runtime | ESP-IDF 事件队列、task/core 规划和服务启动边界 | `src/runtime/*`, `src/services/*` |
 | AI Button | BOOT/AI 键启动保护与消抖，按下时切换 AI 页面并产生 press/release 命令 | `src/input/ai_button.*`, `src/input/ai_button_logic.*` |
 | AI Assistant | `bikemb_ai` 唯一拥有状态机，编排录音、云阶段、超时、取消和状态快照 | `src/ai/ai_assistant.*`, `src/ai/ai_state_machine.*`, `src/ai/ai_types.h` |
 | Cloud Worker | `bikemb_cloud` 串行执行阻塞式 STT、LLM、TTS 和 TTS 播放，返回带 request ID 的结果 | `src/ai/cloud_worker.*` |
@@ -46,7 +46,7 @@ View 层负责把 `BikeMbDashboardMetrics` 映射为页面展示，并处理当�
 
 ### Runtime 骨架
 
-ESP-IDF Runtime 当前用于验证未来服务化结构。新功能迁入前需要先明确任务所有权、事件类型和跨服务数据流。
+ESP-IDF Runtime 当前已经承接产品入口和第一阶段双核模型：`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0。新功能迁入前仍需继续补齐真实 ESP-IDF audio/transport adapter、板级回归和资源基线。
 
 ## AI 助手模块规则
 
@@ -55,6 +55,7 @@ ESP-IDF Runtime 当前用于验证未来服务化结构。新功能迁入前需�
 - 只负责 GPIO、电平语义和消抖，不判断云端状态。
 - 按下产生 `PRESS`，松开产生 `RELEASE`。独立的 `CANCEL` 只来自 AI 页面；忙态再次按下由 AI Assistant 解释为“取消旧请求并开始新录音”。
 - 按键 GPIO 当前由 `ai_config.h` 固定为 GPIO0；后续若增加 board config，应保持业务 reducer 不感知引脚。
+- 在 ESP-IDF 双核路径中，按键不直接调用 Dashboard/LVGL；它只投递 `ShowAiPage` runtime event，由 `bike_ui` 执行页面切换。
 - V1 复用板载 `Key1/BOOT`：`GPIO0`、低电平有效、板载 `10 kΩ` 上拉，详见 ADR-0003。
 - 上电后前 `3000 ms` 忽略按键；满 `3000 ms` 后还必须先观察到连续 `50 ms` 的释放电平才允许产生首个 `PRESS`。这避免按键从启动阶段一直被按住时自动开始录音。
 - GPIO0 在复位采样阶段仍是下载模式 strap；按住 BOOT 上电或复位会进入 ROM 下载模式，固件延时无法消除该行为。
@@ -86,6 +87,7 @@ provider 分为三个窄接口：
 
 ### Stream Player 与 Music Service
 
+- **架构门禁：** 正式 MusicService、产品音乐流和点歌必须等待 ADR-0004 定义的 ESP-IDF 双核迁移完成。门禁关闭前只允许隔离的 decoder/HTTPS stream spike、接口草案和 mock，不得接入产品运行路径。
 - Stream Player 只理解流描述、编码格式和 PCM 输出，不理解歌曲名或 AI 文本。
 - V1 支持 HTTPS MP3 直链，目标码率 `<= 128 kbps`；WAV/PCM 用于 TTS。
 - Music Service V1 从预设或私有配置读取 URL。后续点歌新增 `MusicCatalogProvider::Resolve(query)`，结果仍交给相同 Stream Player。
@@ -97,7 +99,7 @@ provider 分为三个窄接口：
 2. Audio Self Test 和 Audio Prompts 已通过 `AudioSession` 获取 owner。
 3. AI capture 和 TTS PCM 播放已接入 `AudioSession`。
 4. Voice Commands 在迁移前继续保持独立测试环境；AI 环境不得启用该环境。
-5. MP3 stream 和 Music Service 尚未实现。
+5. MP3 stream 和 Music Service 尚未实现，并受 ADR-0004 的迁移门禁约束。
 
 每一步都必须保证源码中生产路径只剩一个 `I2SClass(I2S_NUM_0)` owner，并保留对应 PlatformIO 测试环境作为回归入口。
 
