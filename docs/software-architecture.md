@@ -9,7 +9,9 @@
 - 默认路径：`PlatformIO + Arduino`，入口在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `setup()` / `loop()`。
 - 迁移路径：`PlatformIO + ESP-IDF`，入口也在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `app_main()`。
 
-目前 UI、触摸、音频自检、档位播报、直接语音识别和 AI 助手都以 Arduino 路径为主。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。ESP-IDF 路径已有 Runtime/Event/Service 骨架，但 AI、音频和语音没有接入该运行路径。
+当前 Arduino 路径仍是已上板验证最多的路径，承载 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 AI 语音闭环。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。
+
+ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。它还没有完成真实音频 codec/I2S 和云 transport 的 ESP-IDF 化，也还没有完成板级回归，所以不能关闭 ADR-0004。
 
 ## Bootloader 与双核启动链路
 
@@ -92,6 +94,34 @@ flowchart TB
 5. 双核构建、合同测试和板级启动/触摸/显示/录音/TTS 回归通过，并记录 heap、PSRAM、task stack、UI 延迟和 audio underrun 基线。
 
 当前状态：**门禁未满足**。代码层第一阶段已经完成：ESP-IDF `app_main()` 会启动 `bike_runtime` Core 0 和 `bike_ui` Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 已固定到 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task 执行。门禁仍需板级启动/触摸/显示/录音/TTS 回归和资源基线确认；所以 `MusicService` 和点歌保持“计划中”，不应作为开发工程师的当前实现任务。
+
+## ESP-IDF 双核框架迁移
+
+这一节描述当前“框架迁移”本身，不等同于完整功能迁移。它的目标是先把产品运行模型写清楚，让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。
+
+### 已完成的框架层
+
+| 项 | 当前实现 |
+| --- | --- |
+| 产品入口 | `BIKE_MB_USE_ESPIDF_RUNTIME` 构建进入 BikeMB `app_main()`，不经过 Arduino `setup()` / `loop()`。 |
+| Core 0 runtime | `BikeRuntime_Start()` 创建 `bike_runtime`，负责系统 tick、dashboard tick、AI button 轮询和服务启动边界。 |
+| Core 1 UI | `UiService_Start()` 创建 `bike_ui`，它是 LVGL 和 Dashboard 的唯一运行时 owner。 |
+| Task/core 规划 | `bike_runtime_plan.*` 记录 `bike_runtime`、`bike_ui`、`bikemb_ai`、`bikemb_cloud`、`bikemb_wifi`、`ai_button_poll`、`audio_session` 的归属。 |
+| AI/Cloud/Wi-Fi task | `bikemb_ai`、`bikemb_cloud`、`bikemb_wifi` 均使用 `xTaskCreatePinnedToCore(..., BIKE_RUNTIME_CORE_RUNTIME)` 固定 Core 0。 |
+| 跨核 UI 命令 | AI button 不直接调用 Dashboard/LVGL；按下时先投递 `ShowAiPage` event，再通知 Assistant 开始处理。 |
+| 构建 workaround | ESP-IDF `esp_lcd` 组件局部使用 `-O0`，绕开当前 xtensa GCC 编译 `esp_lcd_panel_rgb.c` 的 internal compiler error。 |
+
+### 仍未完成的迁移层
+
+| 项 | 为什么还不能算完成 |
+| --- | --- |
+| AudioSession ESP-IDF 实现 | 当前真实 codec/I2S 路径仍依赖 Arduino `ESP_I2S`；ESP-IDF 下只是可编译边界。 |
+| Wi-Fi/HTTPS transport | 真实云闭环仍依赖 Arduino `WiFiClientSecure`；ESP-IDF 下需要 `esp_wifi`、`esp_http_client` 或等价 adapter。 |
+| 语音闭环板级验证 | 还没在 ESP-IDF 双核 env 上完成录音、STT、LLM、TTS、播放和取消回归。 |
+| 资源基线 | 还没记录 heap、largest block、PSRAM、task stack high-water mark、UI 延迟和 audio underrun。 |
+| 架构门禁验收 | ADR-0004 要求软件架构根据代码、构建、板级验证和资源数据一起确认，不能只看能编译。 |
+
+当前对开发工程师的实现约束：新功能只允许接入 `bike_runtime` / `bike_ui` / queue-event-snapshot 模型；除 bring-up/回归用途外，不应再把产品能力写回 Arduino `loop()`。
 
 ## 总体模块图
 
@@ -691,7 +721,17 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 
 ## 验证入口
 
-轻量合同测试在 `tools/tests`。
+当前测试入口是 `tools/run-tests.ps1`，它会扫描并执行 `tools/tests/test_*.py`。这些 Python 脚本主要是 contract tests：读取源码、配置和文档中的关键符号，确认模块边界、feature gate、构建环境和架构约束没有被破坏。
+
+目前没有引入 Unity、GoogleTest、Catch2、doctest 这类正式 C/C++ UT 框架。仓库里的 C++ “单元级”测试是 host-side assert tests：由 Python 脚本调用本机 `g++ -std=c++17 -Wall -Wextra -Werror` 编译纯逻辑 `.cpp` 和 `tools/tests/*_test.cpp`，运行后依靠 `assert()` 判断结果。这种方式适合测试 reducer、纯状态机、配置规划、JSON/PCM 小解析器；不适合测试 FreeRTOS 调度、I2S DMA、Wi-Fi、LCD 或真实板级时序。
+
+测试分三层：
+
+| 层级 | 命令 / 入口 | 覆盖范围 | 局限 |
+| --- | --- | --- | --- |
+| Contract tests | `powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1` | Python contract + host-side C++ assert tests。 | 不跑固件，不验证硬件。 |
+| Smoke build | `powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1 -SmokeBuild` | 默认 PlatformIO env 构建。 | 默认 env 不是所有测试环境。 |
+| 指定固件构建 | `py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF 双核迁移环境构建。 | 只能证明可编译，不能证明板级稳定。 |
 
 | 测试文件 | 保护内容 |
 | --- | --- |
@@ -717,10 +757,16 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `ai_assistant_ui_state_test.cpp` | AI snapshot 到 dashboard visual/surface/text 的纯映射。 |
 | `wifi_service_core_test.cpp` | 未配置、连接、断开和 10 s 重试动作。 |
 
-运行：
+常用运行：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1
+```
+
+ESP-IDF 双核迁移环境构建：
+
+```powershell
+py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf
 ```
 
 ## 当前已知架构限制
@@ -735,4 +781,4 @@ powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1
 - 取消能使旧 request 失效并停止本地音频，但不能主动中断阻塞 HTTPS；单一 CloudWorker 会延迟后续云 job。
 - CosyVoice PCM 当前完整缓冲后播放，PSRAM 上限约 625 KiB，不是低延迟流式播放。
 - HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 尚未实现。
-- ESP-IDF runtime 已经有结构，但 AI、音频和语音还没有迁移到这个运行模型。
+- ESP-IDF runtime 已完成代码层第一阶段迁移，但真实音频 codec/I2S、云 transport、板级语音闭环和资源基线尚未完成。

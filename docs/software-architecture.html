@@ -560,6 +560,7 @@
         <a href="#audio-output">语音输出 <span class="toc-tag">new</span></a>
         <a href="#voice">语音识别 <span class="toc-tag">new</span></a>
         <a href="#partition">固件分区 <span class="toc-tag">new</span></a>
+        <a href="#idf-migration">双核迁移 <span class="toc-tag">current</span></a>
         <a href="#idf">ESP-IDF 骨架</a>
         <a href="#tests">验证入口</a>
         <a href="#limits">限制</a>
@@ -582,7 +583,7 @@
       <section id="runtime">
         <div class="section-head">
           <h2>当前运行路径</h2>
-          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。当前 UI、触摸、语音输出、语音识别和 AI 控制框架都以 Arduino 环境为主。</p>
+          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。Arduino 仍是当前最完整的板级验证路径；ESP-IDF 路径已经完成双核框架迁移第一阶段，但真实音频 codec/I2S、云 transport 和板级语音闭环仍在迁移中。</p>
         </div>
         <div class="grid two">
           <article class="card">
@@ -635,6 +636,34 @@
           <tr><td>AI/音频迁移</td><td>AI、Cloud/Wi-Fi、AudioSession 和语音由 ESP-IDF runtime/service 管理，不依赖 Arduino <code>setup()/loop()</code>。</td></tr>
           <tr><td>验证证据</td><td>双核 build/test 和板级启动、触摸、显示、录音、TTS、取消回归通过，并记录 heap、PSRAM、stack、UI 延迟和 underrun 基线。</td></tr>
         </table>
+      </section>
+
+      <section id="idf-migration">
+        <div class="section-head">
+          <h2>ESP-IDF 双核框架迁移</h2>
+          <p>这一节只描述“框架迁移”本身，不等同于完整功能迁移。目标是先固定产品运行模型，让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。</p>
+        </div>
+        <h3>已完成的框架层</h3>
+        <table>
+          <tr><th>项</th><th>当前实现</th></tr>
+          <tr><td>产品入口</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME</code> 构建进入 BikeMB <code>app_main()</code>，不经过 Arduino <code>setup()</code> / <code>loop()</code>。</td></tr>
+          <tr><td>Core 0 runtime</td><td><code>BikeRuntime_Start()</code> 创建 <code>bike_runtime</code>，负责系统 tick、dashboard tick、AI button 轮询和服务启动边界。</td></tr>
+          <tr><td>Core 1 UI</td><td><code>UiService_Start()</code> 创建 <code>bike_ui</code>，它是 LVGL 和 Dashboard 的唯一运行时 owner。</td></tr>
+          <tr><td>Task/core 规划</td><td><code>bike_runtime_plan.*</code> 记录 <code>bike_runtime</code>、<code>bike_ui</code>、<code>bikemb_ai</code>、<code>bikemb_cloud</code>、<code>bikemb_wifi</code>、<code>ai_button_poll</code>、<code>audio_session</code> 的归属。</td></tr>
+          <tr><td>AI/Cloud/Wi-Fi task</td><td><code>bikemb_ai</code>、<code>bikemb_cloud</code>、<code>bikemb_wifi</code> 均使用 <code>xTaskCreatePinnedToCore(..., BIKE_RUNTIME_CORE_RUNTIME)</code> 固定 Core 0。</td></tr>
+          <tr><td>跨核 UI 命令</td><td>AI button 不直接调用 Dashboard/LVGL；按下时先投递 <code>ShowAiPage</code> event，再通知 Assistant 开始处理。</td></tr>
+          <tr><td>构建 workaround</td><td>ESP-IDF <code>esp_lcd</code> 组件局部使用 <code>-O0</code>，绕开当前 xtensa GCC 编译 <code>esp_lcd_panel_rgb.c</code> 的 internal compiler error。</td></tr>
+        </table>
+        <h3>仍未完成的迁移层</h3>
+        <table>
+          <tr><th>项</th><th>为什么还不能算完成</th></tr>
+          <tr><td>AudioSession ESP-IDF 实现</td><td>当前真实 codec/I2S 路径仍依赖 Arduino <code>ESP_I2S</code>；ESP-IDF 下只是可编译边界。</td></tr>
+          <tr><td>Wi-Fi/HTTPS transport</td><td>真实云闭环仍依赖 Arduino <code>WiFiClientSecure</code>；ESP-IDF 下需要 <code>esp_wifi</code>、<code>esp_http_client</code> 或等价 adapter。</td></tr>
+          <tr><td>语音闭环板级验证</td><td>还没在 ESP-IDF 双核 env 上完成录音、STT、LLM、TTS、播放和取消回归。</td></tr>
+          <tr><td>资源基线</td><td>还没记录 heap、largest block、PSRAM、task stack high-water mark、UI 延迟和 audio underrun。</td></tr>
+          <tr><td>架构门禁验收</td><td>ADR-0004 要求软件架构根据代码、构建、板级验证和资源数据一起确认，不能只看能编译。</td></tr>
+        </table>
+        <div class="callout good">对开发工程师的实现约束：新功能只允许接入 <code>bike_runtime</code> / <code>bike_ui</code> / queue-event-snapshot 模型；除 bring-up/回归用途外，不应再把产品能力写回 Arduino <code>loop()</code>。</div>
       </section>
 
       <section id="module-map">
@@ -932,8 +961,15 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
       <section id="tests">
         <div class="section-head">
           <h2>验证入口</h2>
-          <p>轻量合同测试保护关键边界，避免后续改动破坏已验证路径。</p>
+          <p>当前测试入口是 <code>tools/run-tests.ps1</code>，它会扫描并执行 <code>tools/tests/test_*.py</code>。这些 Python 脚本主要是 contract tests：读取源码、配置和文档中的关键符号，确认模块边界、feature gate、构建环境和架构约束没有被破坏。</p>
+          <p>目前没有引入 Unity、GoogleTest、Catch2、doctest 这类正式 C/C++ UT 框架。仓库里的 C++ “单元级”测试是 host-side assert tests：由 Python 脚本调用本机 <code>g++ -std=c++17 -Wall -Wextra -Werror</code> 编译纯逻辑 <code>.cpp</code> 和 <code>tools/tests/*_test.cpp</code>，运行后依靠 <code>assert()</code> 判断结果。</p>
         </div>
+        <table>
+          <tr><th>层级</th><th>命令 / 入口</th><th>覆盖范围</th><th>局限</th></tr>
+          <tr><td>Contract tests</td><td><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1</code></td><td>Python contract + host-side C++ assert tests。</td><td>不跑固件，不验证硬件。</td></tr>
+          <tr><td>Smoke build</td><td><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1 -SmokeBuild</code></td><td>默认 PlatformIO env 构建。</td><td>默认 env 不是所有测试环境。</td></tr>
+          <tr><td>指定固件构建</td><td><code>py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF 双核迁移环境构建。</td><td>只能证明可编译，不能证明板级稳定。</td></tr>
+        </table>
         <table>
           <tr><th>测试文件</th><th>保护内容</th></tr>
           <tr><td><code>test_audio_self_test_contract.py</code></td><td>音频自检开关、引脚、API、dashboard 命令边界。</td></tr>
@@ -942,6 +978,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>test_dashboard_no_auto_page_contract.py</code></td><td>防止 demo metrics 再引入自动翻页。</td></tr>
           <tr><td><code>test_runtime_contract.py</code></td><td>ESP-IDF runtime/event/service 骨架。</td></tr>
           <tr><td><code>test_runtime_plan_contract.py</code></td><td>Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。</td></tr>
+          <tr><td><code>test_project_config_contract.py</code></td><td>PlatformIO/ESP-IDF 构建约束，包括 ESP-IDF 双核环境和 <code>esp_lcd</code> 编译 workaround。</td></tr>
           <tr><td><code>test_ai_framework.py</code></td><td>AI 配置、BOOT reducer、状态机、UI 映射、task/queue 所有权和 main feature gate。</td></tr>
           <tr><td><code>test_dashboard_ai_ui_contract.py</code></td><td>独立 AI 页面只读取 UI-facing snapshot，不直接调用 cloud、audio 或 Assistant 命令。</td></tr>
           <tr><td><code>test_wifi_service_contract.py</code></td><td>异步 Wi-Fi 初始化、密钥边界、状态发布和重试 reducer。</td></tr>
@@ -952,6 +989,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>ai_state_machine_test.cpp</code></td><td>短录音、10 s 上限、60 s deadline、取消和旧 request 丢弃。</td></tr>
         </table>
         <pre><code>powershell -ExecutionPolicy Bypass -File tools\run-tests.ps1</code></pre>
+        <pre><code>py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf</code></pre>
       </section>
 
       <section id="limits">

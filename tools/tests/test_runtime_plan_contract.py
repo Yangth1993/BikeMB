@@ -8,6 +8,7 @@ from contract_helpers import REPO_ROOT, check, read_repo_text
 FIRMWARE_ROOT = REPO_ROOT / "src" / "firmware" / "bikemb"
 RUNTIME_PLAN_HEADER = "src/firmware/bikemb/src/runtime/bike_runtime_plan.h"
 RUNTIME_PLAN_SOURCE = "src/firmware/bikemb/src/runtime/bike_runtime_plan.cpp"
+PLATFORMIO = "src/firmware/bikemb/platformio.ini"
 RUNTIME_PLAN_TEST = REPO_ROOT / "tools" / "tests" / "runtime_plan_test.cpp"
 
 
@@ -78,9 +79,25 @@ def test_ai_button_routes_ui_changes_through_runtime_event_queue() -> None:
     check("DashboardApp_ShowAiPage" in ui, "UI service must own the actual AI page switch.")
 
 
+def test_idf_acceptance_environment_starts_mock_ai_workers() -> None:
+    platformio = read_repo_text(PLATFORMIO)
+    idf_start = platformio.index("[env:esp32-s3-touch-lcd-1-85c-idf]")
+    idf_env = platformio[idf_start:]
+
+    check(
+        "-D BIKE_MB_ENABLE_AI_ASSISTANT=1" in idf_env,
+        "ESP-IDF acceptance env must start AI assistant, cloud, Wi-Fi, and AI button polling.",
+    )
+    check(
+        "-D BIKE_MB_AI_USE_MOCK_PROVIDERS=1" in idf_env,
+        "ESP-IDF acceptance env must use mock providers until real ESP-IDF cloud/audio adapters migrate.",
+    )
+
+
 if __name__ == "__main__":
     test_runtime_plan_is_host_testable_and_documents_core_ownership()
     test_runtime_plan_native_contract()
     test_product_workers_are_pinned_to_runtime_core()
     test_ai_button_routes_ui_changes_through_runtime_event_queue()
+    test_idf_acceptance_environment_starts_mock_ai_workers()
     print("PASS test_runtime_plan_contract")

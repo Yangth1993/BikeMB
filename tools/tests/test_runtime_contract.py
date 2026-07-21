@@ -38,6 +38,16 @@ def test_runtime_event_bus_uses_fixed_freertos_queue() -> None:
     check("xTaskCreatePinnedToCore" in source, "Runtime must start tasks through ESP-IDF FreeRTOS.")
 
 
+def test_runtime_logs_idf_acceptance_resource_diagnostics() -> None:
+    source = read_repo_text(RUNTIME_SOURCE)
+
+    check("BikeRuntime_LogServicePlan" in source, "Runtime must log service/core ownership for IDF acceptance.")
+    check("heap_caps_get_free_size" in source, "Runtime diagnostics must log heap and PSRAM free memory.")
+    check("heap_caps_get_largest_free_block" in source, "Runtime diagnostics must log largest heap blocks.")
+    check("uxTaskGetStackHighWaterMark(nullptr)" in source, "Runtime diagnostics must log runtime stack high-water mark.")
+    check("BikeRuntime_GetDroppedLowPriorityEvents()" in source, "Runtime diagnostics must include dropped UI/runtime events.")
+
+
 def test_ui_service_is_lvgl_single_owner() -> None:
     source = read_repo_text(UI_SERVICE)
 
@@ -48,6 +58,17 @@ def test_ui_service_is_lvgl_single_owner() -> None:
     check("LvglPort_Run()" in source, "UI service must be the runtime owner of lv_timer_handler().")
     check("ESP_LOG" in source, "UI service must use ESP-IDF logging instead of Serial logging.")
     check("Serial." not in source, "UI service must not use Arduino Serial.")
+
+
+def test_ui_service_logs_lvgl_acceptance_diagnostics() -> None:
+    source = read_repo_text(UI_SERVICE)
+
+    check("LvglPort_GetPerfStats()" in source, "UI diagnostics must read LVGL perf stats from the UI task.")
+    check("LvglPort_ResetPerfStats()" in source, "UI diagnostics must reset LVGL perf stats after each window.")
+    check("handlerMaxUs" in source, "UI diagnostics must include max lv_timer_handler time.")
+    check("flushCount" in source, "UI diagnostics must include LVGL flush count.")
+    check("heap_caps_get_free_size" in source, "UI diagnostics must include heap and PSRAM free memory.")
+    check("uxTaskGetStackHighWaterMark(nullptr)" in source, "UI diagnostics must log UI task stack high-water mark.")
 
 
 def test_metrics_service_exists_as_app_service_boundary() -> None:
@@ -73,7 +94,9 @@ def test_no_runtime_source_uses_arduino_header() -> None:
 if __name__ == "__main__":
     test_native_espidf_entrypoint_delegates_to_runtime()
     test_runtime_event_bus_uses_fixed_freertos_queue()
+    test_runtime_logs_idf_acceptance_resource_diagnostics()
     test_ui_service_is_lvgl_single_owner()
+    test_ui_service_logs_lvgl_acceptance_diagnostics()
     test_metrics_service_exists_as_app_service_boundary()
     test_no_runtime_source_uses_arduino_header()
     print("PASS test_runtime_contract")

@@ -1,5 +1,7 @@
 #include "bike_runtime.h"
 
+#include "esp_heap_caps.h"
+#include "esp_log.h"
 #include "freertos/task.h"
 
 #include "ai/ai_assistant.h"
@@ -27,10 +29,12 @@ namespace {
 
 constexpr uint32_t kDashboardIntervalMs = 33;
 constexpr uint32_t kRuntimePollMs = 5;
+constexpr uint32_t kRuntimeDiagnosticsIntervalMs = 10000;
 constexpr uint32_t kEventQueueLength = 16;
 constexpr uint32_t kRuntimeTaskStackWords = 4096;
 constexpr UBaseType_t kRuntimeTaskPriority = 4;
 constexpr BaseType_t kRuntimeTaskCore = BIKE_RUNTIME_CORE_RUNTIME;
+constexpr const char *TAG = "BikeMB.Runtime";
 
 QueueHandle_t g_eventQueue = nullptr;
 TaskHandle_t g_runtimeTask = nullptr;
@@ -38,6 +42,47 @@ uint32_t g_droppedLowPriorityEvents = 0;
 
 bool IsLowPriorityEvent(BikeEventType type) {
   return type == BikeEventType::SystemTick || type == BikeEventType::DashboardTick;
+}
+
+void BikeRuntime_LogServicePlan() {
+  const BikeRuntimeServicePlan *plans = BikeRuntime_GetServicePlans();
+  const size_t count = BikeRuntime_GetServicePlanCount();
+  for (size_t i = 0; i < count; ++i) {
+    ESP_LOGI(
+        TAG,
+        "plan task=%s core=%d owns_lvgl=%d autostart=%d",
+        plans[i].taskName,
+        static_cast<int>(plans[i].core),
+        plans[i].ownsLvgl ? 1 : 0,
+        plans[i].autoStart ? 1 : 0);
+  }
+}
+
+void LogRuntimeDiagnostics(uint32_t nowMs) {
+  static uint32_t s_lastDiagnosticsMs = 0;
+  if (nowMs - s_lastDiagnosticsMs < kRuntimeDiagnosticsIntervalMs) {
+    return;
+  }
+  s_lastDiagnosticsMs = nowMs;
+
+  const size_t internalFree =
+      heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  const size_t internalLargest =
+      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  const size_t psramFree = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+  const size_t psramLargest = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
+  const UBaseType_t stackHighWaterWords = uxTaskGetStackHighWaterMark(nullptr);
+  ESP_LOGI(
+      TAG,
+      "diag core=%d task=bike_runtime heap_internal_free=%u heap_internal_largest=%u "
+      "psram_free=%u psram_largest=%u stack_hwm_words=%u dropped_low_prio=%u",
+      xPortGetCoreID(),
+      static_cast<unsigned>(internalFree),
+      static_cast<unsigned>(internalLargest),
+      static_cast<unsigned>(psramFree),
+      static_cast<unsigned>(psramLargest),
+      static_cast<unsigned>(stackHighWaterWords),
+      static_cast<unsigned>(BikeRuntime_GetDroppedLowPriorityEvents()));
 }
 
 void RuntimeTickTask(void *arg) {
@@ -68,6 +113,7 @@ void RuntimeTickTask(void *arg) {
       BikeRuntime_PostEvent(&dashboardTick, 0);
     }
 
+    LogRuntimeDiagnostics(nowMs);
     vTaskDelay(pdMS_TO_TICKS(kRuntimePollMs));
   }
 }
@@ -87,6 +133,7 @@ void BikeRuntime_Start() {
     BikeRuntime_Init();
   }
 
+  BikeRuntime_LogServicePlan();
   UiService_Start(g_eventQueue);
 
 #if BIKE_MB_ENABLE_AUDIO_SESSION

@@ -4,21 +4,34 @@
 
 ## 当前目标
 
-- 稳定 `src/firmware/bikemb` 的云端 AI 语音助手第一版。
-- 保持核心码表 UI、页面切换、提示音、麦克风采集和 TTS 播放在连续交互中稳定。
-- 将已确认的交互行为同步到 `openspec/changes/` 和 `docs/ui-ux/`。
+- 完成 ESP-IDF 双核迁移验收第一轮，不开发 `MusicService` 或点歌。
+- 先确认 `app_main()`、`bike_runtime` Core 0、`bike_ui` Core 1、LVGL 单 owner 和 AI/Cloud/Wi-Fi/AI button 非 LVGL owner。
+- 在进入 AudioSession ESP-IDF codec/I2S 迁移前，保留清晰的板级证据和剩余风险。
 
 ## 下一步
 
-1. 用户上板验证：按下实体录音/AI 键后应立即跳转到 `AiAssistant` 页面，并进入录音流程。
-2. 连续测试 5 到 10 轮短语音问答，观察是否仍有沙沙声、无声或 `pcm missing`。
-3. 若语音助手稳定，继续推进 HTTPS MP3 音频流 spike；选型前先检查许可证、RAM、CPU、Arduino 3.x 兼容性和自定义 PCM sink。
+1. 完成 BOOT/AI 键释放解锁后再触发的板级串口采集；本轮已验证按住上电不误触发，后半段按用户要求跳过。
+2. 继续 ESP-IDF 板级触摸、显示长稳、WDT/panic 和 UI 卡顿观察。
+3. 通过双核门禁后，再进入 AudioSession ESP-IDF codec/I2S 迁移；音乐服务和点歌继续冻结。
+
+## 最新验收记录
+
+- 2026-07-22：`esp32-s3-touch-lcd-1-85c-idf` 构建成功，RAM `16.1%`，Flash `5.6%`。
+- 2026-07-22：已烧录到 `COM5`，串口确认 `app_main()` 进入 BikeMB ESP-IDF runtime。
+- 2026-07-22：串口确认 `bike_runtime core=0 owns_lvgl=0`，`bike_ui core=1 owns_lvgl=1`，`bikemb_ai`、`bikemb_cloud`、`bikemb_wifi`、`ai_button_poll` 均为 Core 0 且 `owns_lvgl=0`。
+- 2026-07-22：30 秒诊断无 WDT、panic 或重复重启；稳定值约为 internal heap free `225587`、largest `147456`、PSRAM free `8385936`、PSRAM largest `8257536`、runtime stack HWM `2000` words、UI stack HWM `5504` words。
+- 2026-07-22：UI 10 秒窗口诊断显示稳态 `render_ms=1-2`，`handler_max_us≈20744-20803`，`handler_avg_us≈561-570`；首屏初始化窗口峰值约 `109036 us`。
+- 2026-07-22：按住 BOOT/AI 键复位到 `LVGL UI service ready` 未出现 `ai capture` 日志，确认启动保护前半段不误触发。
 
 ## 验证入口
 
 - 文档结构：确认 `docs/product/`、`docs/architecture/`、`docs/project/` 均存在。
+- 双核运行时契约：`python tools\tests\test_runtime_contract.py`
+- 双核规划契约：`python tools\tests\test_runtime_plan_contract.py`
 - 契约测试：`python tools\tests\test_dashboard_ai_ui_contract.py`
 - AI 框架测试：`python tools\tests\test_ai_framework.py`
 - 音频自检契约：`python tools\tests\test_audio_self_test_contract.py`
 - 固件构建：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test`
 - 固件烧录：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test -t upload`
+- ESP-IDF 双核构建：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf`
+- ESP-IDF 双核烧录：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf -t upload`
