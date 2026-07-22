@@ -6,6 +6,7 @@ from contract_helpers import check, read_repo_text
 PLATFORMIO_INI = "src/firmware/bikemb/platformio.ini"
 SDKCONFIG_DEFAULTS = "src/firmware/bikemb/sdkconfig.defaults"
 IDF_CMAKE = "src/firmware/bikemb/CMakeLists.txt"
+IDF_PARTITIONS = "src/firmware/bikemb/partitions_idf_16m.csv"
 ENV_NAME = "esp32-s3-touch-lcd-1-85c"
 ENV_SECTION = f"env:{ENV_NAME}"
 IDF_ENV_NAME = "esp32-s3-touch-lcd-1-85c-idf"
@@ -82,6 +83,21 @@ def test_platformio_espidf_env_is_available_without_replacing_fallback() -> None
     )
 
 
+def test_espidf_env_uses_large_app_partition_for_migrated_services() -> None:
+    config = load_config()
+
+    check(
+        config.get(IDF_ENV_SECTION, "board_build.partitions", fallback="") == "partitions_idf_16m.csv",
+        "ESP-IDF env must use an explicit partition table with enough app space for migrated services.",
+    )
+
+    partitions = read_repo_text(IDF_PARTITIONS)
+    check(
+        "factory,  app,  factory, 0x10000, 4M" in partitions,
+        "ESP-IDF partition table must keep at least a 4MB factory app partition.",
+    )
+
+
 def test_platformio_serial_monitor_stays_on_com5() -> None:
     config = load_config()
 
@@ -142,6 +158,7 @@ def test_espidf_lcd_component_uses_local_compiler_ice_workaround() -> None:
 if __name__ == "__main__":
     test_platformio_target_env_and_board_stay_fixed()
     test_platformio_espidf_env_is_available_without_replacing_fallback()
+    test_espidf_env_uses_large_app_partition_for_migrated_services()
     test_platformio_serial_monitor_stays_on_com5()
     test_platformio_lvgl_include_flags_stay_present()
     test_espidf_sdkconfig_defaults_match_board_and_dashboard()

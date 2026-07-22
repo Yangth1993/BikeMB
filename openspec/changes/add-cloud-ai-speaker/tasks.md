@@ -35,6 +35,8 @@
   - [x] Code-stage 1: `app_main()` starts `bike_runtime` on Core 0 and `bike_ui` on Core 1; AI Assistant, Cloud Worker, and Wi-Fi Worker are pinned to Core 0.
   - [x] Code-stage 1: BOOT/AI key page navigation is routed through runtime event queue to the Core 1 UI owner.
   - [x] Build-stage 1: `esp32-s3-touch-lcd-1-85c-idf` builds successfully with the local `esp_lcd` compiler workaround.
+  - [x] Board-stage 1: `esp32-s3-touch-lcd-1-85c-idf` boots with a 4MB factory app partition after ESP-IDF Wi-Fi growth exceeded the default 1MB app partition.
+  - [x] Board-stage 1: ESP-IDF `WifiService` uses `esp_wifi`/`esp_netif`/`esp_event`/`nvs_flash`, stays on Core 0, and reaches online state without directly touching LVGL.
   - [ ] Board-stage: verify boot, touch, display, recording, TTS, cancellation, and resource baselines before accepting the gate.
 - [ ] Add an isolated HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, ESP-IDF, and custom PCM sink checks. This spike must not enter the product runtime before the migration gate closes.
 - [ ] After the ADR-0004 gate closes, add `MusicService` for preset and private user URL playback.
