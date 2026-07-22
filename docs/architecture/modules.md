@@ -46,7 +46,7 @@ View 层负责把 `BikeMbDashboardMetrics` 映射为页面展示，并处理当�
 
 ### Runtime 骨架
 
-ESP-IDF Runtime 当前已经承接产品入口和第一阶段双核模型：`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0。新功能迁入前仍需继续补齐真实 ESP-IDF audio/transport adapter、板级回归和资源基线。
+ESP-IDF Runtime 当前已经承接产品入口和第一阶段双核模型：`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0。AudioSession codec/I2S 初始化已在 ESP-IDF 上到达 `session ready`；新功能迁入前仍需继续补齐 ESP-IDF 录音、TTS、取消、真实 transport、板级回归和资源基线。
 
 ## AI 助手模块规则
 

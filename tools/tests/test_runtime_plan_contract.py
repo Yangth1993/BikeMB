@@ -85,11 +85,11 @@ def test_idf_acceptance_environment_starts_mock_ai_workers() -> None:
     idf_env = platformio[idf_start:]
 
     check(
-        "-D BIKE_MB_ENABLE_AI_ASSISTANT=1" in idf_env,
+        "-DBIKE_MB_IDF_ENABLE_AI_ASSISTANT=ON" in idf_env,
         "ESP-IDF acceptance env must start AI assistant, cloud, Wi-Fi, and AI button polling.",
     )
     check(
-        "-D BIKE_MB_AI_USE_MOCK_PROVIDERS=1" in idf_env,
+        "-DBIKE_MB_IDF_AI_USE_MOCK_PROVIDERS=ON" in idf_env,
         "ESP-IDF acceptance env must use mock providers until real ESP-IDF cloud/audio adapters migrate.",
     )
 

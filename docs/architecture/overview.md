@@ -30,13 +30,13 @@ P2 AI 助手初版在该边界之外独立演进，当前已经形成实体键�
 当前固件保留两条路径：
 
 - 默认路径：`PlatformIO + Arduino`，入口为 `setup()` / `loop()`。
-- 迁移路径：`PlatformIO + ESP-IDF`，已有 Runtime/Event/Service 骨架，但不是音频和语音的主验证路径。
+- 迁移路径：`PlatformIO + ESP-IDF`，已有 Runtime/Event/Service 骨架，AudioSession codec/I2S 初始化已完成第一轮上板验证，但还不是完整语音闭环的主验证路径。
 
 默认路径已经承载当前 LVGL dashboard、触摸、音频自检、档位播报和直接语音识别测试。ESP-IDF 路径用于逐步建立更清晰的任务、事件和服务边界。
 
 AI 助手初版继续使用 Arduino 路径和 FreeRTOS task，不以该功能为理由迁移整个固件到 ESP-IDF。LVGL 仍只在现有主循环中访问；网络请求和 TTS 播放在 `bikemb_cloud` 中执行，录音由 `bikemb_ai` 轮询 `AudioSession` 完成。
 
-下一阶段继续完成 ESP-IDF 双核迁移。代码层第一阶段已经完成：`bike_runtime` 固定在 Core 0，`bike_ui` 固定在 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定在 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。根据 ADR-0004，这是正式 `MusicService`、产品音乐流和点歌开发的强制前置条件；迁移完成前只允许隔离的 decoder/stream spike、接口和 mock 工作。
+下一阶段继续完成 ESP-IDF 双核迁移。代码层第一阶段已经完成：`bike_runtime` 固定在 Core 0，`bike_ui` 固定在 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定在 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task；AudioSession codec/I2S 初始化已在 ESP-IDF 上到达 `session ready`。根据 ADR-0004，这是正式 `MusicService`、产品音乐流和点歌开发的强制前置条件；迁移完成前只允许隔离的 decoder/stream spike、接口和 mock 工作。
 
 ROM Bootloader、Flash 二级 Bootloader、应用 `call_start_cpu0/call_start_cpu1` 和 FreeRTOS 两核调度器的完整启动顺序见 `docs/software-architecture.md` 的“Bootloader 与双核启动链路”章节。
 

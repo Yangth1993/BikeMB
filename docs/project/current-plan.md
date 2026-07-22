@@ -4,15 +4,15 @@
 
 ## 当前目标
 
-- 完成 ESP-IDF 双核迁移验收第一轮，不开发 `MusicService` 或点歌。
-- 先确认 `app_main()`、`bike_runtime` Core 0、`bike_ui` Core 1、LVGL 单 owner 和 AI/Cloud/Wi-Fi/AI button 非 LVGL owner。
-- 在进入 AudioSession ESP-IDF codec/I2S 迁移前，保留清晰的板级证据和剩余风险。
+- 继续 ESP-IDF 双核迁移，不开发 `MusicService` 或点歌。
+- 已完成双核第一轮和 AudioSession ESP-IDF codec/I2S 初始化验收。
+- 下一步补齐 ESP-IDF 录音、TTS 播放、取消和云 transport 回归，关闭 ADR-0004 前仍保持音乐功能冻结。
 
 ## 下一步
 
-1. 补齐 BOOT/AI 键释放解锁后再触发的板级串口采集；本轮已确认 `ai_button_poll` 在 Core 0 轮询，GPIO 当前读数保持未按下，尚未观察到 raw pressed/released。
-2. 若确认物理 BOOT/AI 键链路正常，再关闭 ADR-0004 第一轮双核门禁；否则先核对实物按键是否接到 `GPIO0`。
-3. 通过双核门禁后，再进入 AudioSession ESP-IDF codec/I2S 迁移；音乐服务和点歌继续冻结。
+1. 新增 ESP-IDF AudioSession 录音/播放自检入口，验证 `ReadMicBytes`、`WriteStereoPcm`、PSRAM clip 和 owner 释放。
+2. 迁移或替换 ESP-IDF cloud transport，完成 Qwen ASR、Qwen Chat、CosyVoice、播放和取消回归。
+3. 记录 ESP-IDF 语音闭环的 heap、PSRAM、task stack high-water mark、UI 延迟和 audio underrun 基线，再请求架构师关闭 ADR-0004。
 
 ## 最新验收记录
 
@@ -33,6 +33,11 @@
 - 2026-07-23：新增 AI/BOOT 键板级验收日志：初始化参数、10 秒一次 `ai button diag raw=...`、raw pressed/released 和去抖后的 pressed/released 事件。
 - 2026-07-23：`esp32-s3-touch-lcd-1-85c-idf` 重新构建并烧录成功，资源占用 RAM `22.5%`，Flash `8.8%`。
 - 2026-07-23：串口确认 `ai button diag raw=0 armed=1 stable=0 candidate=0` 周期输出，说明 AI button poll 已运行且释放解锁完成；后续 60 秒窗口未观察到 raw pressed/released，BOOT/AI 物理触发链路仍需复测或核对实物 GPIO。
+- 2026-07-23：用户确认按键是好的，本轮不再单独复测 raw pressed/released。
+- 2026-07-23：新增 `esp32-s3-touch-lcd-1-85c-idf-audio-session-test`，使用 ESP-IDF `driver/i2s_std.h` 初始化 I2S0、ES8311 和 ES7210，不启用 AI/云/自检/音乐。
+- 2026-07-23：`esp32-s3-touch-lcd-1-85c-idf-audio-session-test` 构建成功并烧录到 `COM5`，资源占用 RAM `16.0%`，Flash `5.7%`。
+- 2026-07-23：板级启动日志确认 `audio_session core=0 owns_lvgl=0`，`BikeMBAudioSession: session enabled` 和 `BikeMBAudioSession: session ready`；随后 25 秒串口观察无 WDT、panic 或重复重启。
+- 2026-07-23：AudioSession ESP-IDF 初始化后资源约为 internal heap free `244407`、largest `167936`、PSRAM free `8384900`、PSRAM largest `8257536`、runtime stack HWM `2012-3356` words、UI stack HWM `5504` words；UI 稳态 `render_ms=1-9`，启动首个窗口 `handler_max_us≈110635`。
 
 ## 验证入口
 
@@ -41,6 +46,7 @@
 - 双核规划契约：`python tools\tests\test_runtime_plan_contract.py`
 - Avinox/UI 契约：`python tools\tests\test_avinox_ui_contract.py`
 - ESP-IDF Wi-Fi 契约：`python tools\tests\test_idf_wifi_service_contract.py`
+- ESP-IDF AudioSession 契约：`python tools\tests\test_idf_audio_session_contract.py`
 - 契约测试：`python tools\tests\test_dashboard_ai_ui_contract.py`
 - AI 框架测试：`python tools\tests\test_ai_framework.py`
 - 音频自检契约：`python tools\tests\test_audio_self_test_contract.py`
