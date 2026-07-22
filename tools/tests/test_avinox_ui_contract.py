@@ -94,7 +94,12 @@ def test_settings_ux_is_implemented() -> None:
     check("CST816_GESTURE_SWIPE_DOWN" in core, "Swipe down must return from settings/detail pages.")
     check("BikeMbDashboardPages_ShowSettings" in core, "Core gesture handling must use the settings entry API.")
     check("BikeMbDashboardPages_ReturnFromSettings" in core, "Core gesture handling must use the settings return API.")
+    check("[BikeMB][touch] gesture swipe_left" in core,
+          "Touch gestures must be logged from the UI owner for ESP-IDF board acceptance.")
     check("BikeMbDashboardPages_ShowDashboardPage" in header, "Pages API must allow returning to the previous dashboard page.")
+
+    lvgl_port = read_repo_text("src/firmware/bikemb/src/platform/lvgl_port.cpp")
+    check("CST816 touch ready" in lvgl_port, "CST816 init success must be visible in board logs.")
 
 
 def test_simulator_uses_current_dashboard_metrics() -> None:

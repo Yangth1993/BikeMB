@@ -1,5 +1,7 @@
 #include "dashboard_view_core.h"
 
+#include <stdio.h>
+
 #include "../drivers/Touch_CST816.h"
 #include "dashboard_pages.h"
 #include "dashboard_ui_style.h"
@@ -66,15 +68,19 @@ void BikeMbDashboardView_SetModeChangedCallback(BikeMbDashboardModeChangedCallba
 static void handle_touch_gesture(void) {
   const Cst816Gesture gesture = TouchCst816_ConsumeGesture();
   if (gesture == CST816_GESTURE_SWIPE_UP && BikeMbDashboardPages_IsDashboardVisible(&g_dashboard_pages)) {
+    printf("[BikeMB][touch] gesture swipe_up\n");
     BikeMbDashboardPages_ShowSettings(&g_dashboard_pages);
   } else if (gesture == CST816_GESTURE_SWIPE_DOWN &&
              !BikeMbDashboardPages_IsDashboardVisible(&g_dashboard_pages)) {
+    printf("[BikeMB][touch] gesture swipe_down\n");
     BikeMbDashboardPages_ReturnFromSettings(&g_dashboard_pages);
   } else if (gesture == CST816_GESTURE_SWIPE_LEFT &&
              BikeMbDashboardPages_IsDashboardVisible(&g_dashboard_pages)) {
+    printf("[BikeMB][touch] gesture swipe_left\n");
     BikeMbDashboardView_NextPage();
   } else if (gesture == CST816_GESTURE_SWIPE_RIGHT &&
              BikeMbDashboardPages_IsDashboardVisible(&g_dashboard_pages)) {
+    printf("[BikeMB][touch] gesture swipe_right\n");
     BikeMbDashboardView_PreviousPage();
   }
 }

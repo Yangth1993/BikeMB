@@ -84,6 +84,7 @@ void LvglPort_Init() {
     g_touchDrv.type = LV_INDEV_TYPE_POINTER;
     g_touchDrv.read_cb = TouchReadCallback;
     lv_indev_drv_register(&g_touchDrv);
+    BikePlatform_LogInfo("BikeMB.LvglPort", "CST816 touch ready");
   } else {
     BikePlatform_LogInfo("BikeMB.LvglPort", "CST816 touch init failed");
   }

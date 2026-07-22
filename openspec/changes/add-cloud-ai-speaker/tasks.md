@@ -37,6 +37,7 @@
   - [x] Build-stage 1: `esp32-s3-touch-lcd-1-85c-idf` builds successfully with the local `esp_lcd` compiler workaround.
   - [x] Board-stage 1: `esp32-s3-touch-lcd-1-85c-idf` boots with a 4MB factory app partition after ESP-IDF Wi-Fi growth exceeded the default 1MB app partition.
   - [x] Board-stage 1: ESP-IDF `WifiService` uses `esp_wifi`/`esp_netif`/`esp_event`/`nvs_flash`, stays on Core 0, and reaches online state without directly touching LVGL.
+  - [x] Board-stage 1: CST816 touch controller initializes under the Core 1 LVGL owner, and touch gesture logging is available for board acceptance.
   - [ ] Board-stage: verify boot, touch, display, recording, TTS, cancellation, and resource baselines before accepting the gate.
 - [ ] Add an isolated HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, ESP-IDF, and custom PCM sink checks. This spike must not enter the product runtime before the migration gate closes.
 - [ ] After the ADR-0004 gate closes, add `MusicService` for preset and private user URL playback.
