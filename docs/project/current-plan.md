@@ -10,8 +10,8 @@
 
 ## 下一步
 
-1. 补齐 ESP-IDF 板级真实触摸手势日志确认；当前已确认 CST816 初始化成功，但尚未在串口窗口内观察到手势事件。
-2. 补齐 BOOT/AI 键释放解锁后再触发的板级串口采集；本轮已验证按住上电不误触发，后半段此前按用户要求跳过。
+1. 补齐 BOOT/AI 键释放解锁后再触发的板级串口采集；本轮已确认 `ai_button_poll` 在 Core 0 轮询，GPIO 当前读数保持未按下，尚未观察到 raw pressed/released。
+2. 若确认物理 BOOT/AI 键链路正常，再关闭 ADR-0004 第一轮双核门禁；否则先核对实物按键是否接到 `GPIO0`。
 3. 通过双核门禁后，再进入 AudioSession ESP-IDF codec/I2S 迁移；音乐服务和点歌继续冻结。
 
 ## 最新验收记录
@@ -29,7 +29,10 @@
 - 2026-07-23：新增 UI owner 侧触摸验收日志：CST816 初始化成功打印 `CST816 touch ready`，滑动手势将打印 `[BikeMB][touch] gesture ...`。
 - 2026-07-23：`esp32-s3-touch-lcd-1-85c-idf` 重新构建并烧录到 `COM5`，资源占用 RAM `22.5%`，Flash `8.8%`；启动串口确认 `CST816 touch ready`。
 - 2026-07-23：连续 90 秒加后续 45 秒串口观察无 WDT、panic 或重复重启；Wi-Fi 在线，UI 稳态 `render_ms=1-2`，runtime/UI 诊断持续输出。
-- 2026-07-23：串口窗口内尚未观察到 `[BikeMB][touch] gesture ...`，真实手势输入仍需人工滑动确认。
+- 2026-07-23：用户确认触摸交互正常；CST816 触摸链路本轮按板级观察通过。
+- 2026-07-23：新增 AI/BOOT 键板级验收日志：初始化参数、10 秒一次 `ai button diag raw=...`、raw pressed/released 和去抖后的 pressed/released 事件。
+- 2026-07-23：`esp32-s3-touch-lcd-1-85c-idf` 重新构建并烧录成功，资源占用 RAM `22.5%`，Flash `8.8%`。
+- 2026-07-23：串口确认 `ai button diag raw=0 armed=1 stable=0 candidate=0` 周期输出，说明 AI button poll 已运行且释放解锁完成；后续 60 秒窗口未观察到 raw pressed/released，BOOT/AI 物理触发链路仍需复测或核对实物 GPIO。
 
 ## 验证入口
 
