@@ -42,6 +42,8 @@
   - [x] Board-stage 1: AI/BOOT key poll diagnostics are available and show the poll task running after release-to-arm.
   - [x] Board-stage 1: User confirmed the AI/BOOT key is normal; no additional raw press/release capture is required for this round.
   - [x] Board-stage 2: `esp32-s3-touch-lcd-1-85c-idf-audio-session-test` boots under ESP-IDF and reaches `BikeMBAudioSession: session ready` without WDT or panic.
+  - [x] Code-stage 2: ESP-IDF real cloud worker can build Qwen ASR and Qwen Chat HTTPS JSON requests through `esp_http_client`; CosyVoice playback remains explicitly unavailable and silent.
+  - [ ] Board-stage 2: burn `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` and verify ASR/Chat logs without TTS playback after USB serial is available again.
   - [ ] Board-stage: verify boot, touch, display, recording, TTS, cancellation, and resource baselines before accepting the gate.
 - [ ] Add an isolated HTTPS MP3 stream spike; select a decoder only after license, RAM, CPU, ESP-IDF, and custom PCM sink checks. This spike must not enter the product runtime before the migration gate closes.
 - [ ] After the ADR-0004 gate closes, add `MusicService` for preset and private user URL playback.

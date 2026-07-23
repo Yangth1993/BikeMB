@@ -11,7 +11,7 @@
 
 当前 Arduino 路径仍是已上板验证最多的路径，承载 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 AI 语音闭环。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。
 
-ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 的 ESP-IDF codec/I2S 初始化已完成第一轮上板验证，但 ESP-IDF 录音、TTS 播放、取消和真实云 transport 还没有完成回归，所以不能关闭 ADR-0004。
+ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 的 ESP-IDF codec/I2S 初始化已完成第一轮上板验证，Qwen ASR/Qwen Chat 的 ESP-IDF HTTPS JSON transport 已能构建，但 ESP-IDF TTS 播放、取消和完整语音闭环还没有完成回归，所以不能关闭 ADR-0004。
 
 ## Bootloader 与双核启动链路
 
@@ -562,6 +562,7 @@ sequenceDiagram
 | `esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test` | Arduino | Qwen ASR + Qwen Chat + CosyVoice 真实云闭环。 | AI + AudioSession，测试专用 insecure TLS |
 | `esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF | Runtime/Event/Service 迁移构建。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1` |
 | `esp32-s3-touch-lcd-1-85c-idf-audio-session-test` | ESP-IDF | AudioSession codec/I2S 初始化迁移验证。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1`，`BIKE_MB_IDF_ENABLE_AUDIO_SESSION=ON` |
+| `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` | ESP-IDF | 无声真实云迁移验证，当前只到 Qwen ASR/Qwen Chat。 | AI + AudioSession，TTS 播放显式未迁移 |
 
 ### 默认分区
 
@@ -745,6 +746,7 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `test_runtime_contract.py` | ESP-IDF runtime/event/service 骨架。 |
 | `test_runtime_plan_contract.py` | Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。 |
 | `test_idf_audio_session_contract.py` | ESP-IDF AudioSession 独立构建环境、CMake feature gate 和 `i2s_std` 初始化边界。 |
+| `test_idf_cloud_transport_contract.py` | ESP-IDF real cloud 环境、`esp_http_client` ASR/Chat transport 和 TTS 静默未迁移边界。 |
 | `test_ai_framework.py` | AI 配置、BOOT 键 reducer、AI 状态机、UI 映射、task/queue 所有权和 main feature gate。 |
 | `test_dashboard_ai_ui_contract.py` | Dashboard 只从 snapshot 派生 AI 页面，不直接依赖 cloud/audio/Assistant 命令接口。 |
 | `test_wifi_service_contract.py` | Wi-Fi service 不阻塞启动、配置隔离、重连 reducer 和 Assistant 状态发布。 |

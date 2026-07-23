@@ -48,7 +48,7 @@ set(BIKEMB_SRCS
 idf_component_register(
     SRCS ${BIKEMB_SRCS}
     INCLUDE_DIRS "." "../include"
-    REQUIRES driver esp_timer esp_lcd esp_hw_support esp_event esp_netif esp_wifi nvs_flash lvgl
+    REQUIRES driver esp_timer esp_lcd esp_hw_support esp_event esp_netif esp_wifi nvs_flash esp_http_client mbedtls lvgl
 )
 
 set(BIKEMB_COMPILE_DEFINITIONS

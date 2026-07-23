@@ -14,6 +14,11 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 
+#if defined(BIKE_MB_USE_ESPIDF_RUNTIME)
+#include "esp_crt_bundle.h"
+#include "esp_http_client.h"
+#endif
+
 #if __has_include("ai_secrets.local.h")
 #include "ai_secrets.local.h"
 #endif
@@ -835,6 +840,248 @@ bool postCosyVoiceTts(const char *text, uint32_t requestId) {
 }
 #endif
 
+#if defined(BIKE_MB_USE_ESPIDF_RUNTIME)
+struct IdfCountSinkContext {
+  size_t length;
+};
+
+struct IdfBufferedClientSinkContext {
+  esp_http_client_handle_t client;
+  char buffer[kHttpWriteBufferBytes];
+  size_t length;
+};
+
+bool idfCountSink(const char *, size_t length, void *context) {
+  IdfCountSinkContext *count = static_cast<IdfCountSinkContext *>(context);
+  if (count == nullptr) {
+    return false;
+  }
+  count->length += length;
+  return true;
+}
+
+bool flushIdfBufferedClientSink(IdfBufferedClientSinkContext *out) {
+  if (out == nullptr || out->client == nullptr) {
+    return false;
+  }
+  if (out->length == 0) {
+    return true;
+  }
+  const int written = esp_http_client_write(out->client, out->buffer, out->length);
+  const bool ok = written == static_cast<int>(out->length);
+  out->length = 0;
+  return ok;
+}
+
+bool idfBufferedClientSink(const char *data, size_t length, void *context) {
+  IdfBufferedClientSinkContext *out = static_cast<IdfBufferedClientSinkContext *>(context);
+  if (out == nullptr || out->client == nullptr || data == nullptr) {
+    return false;
+  }
+  size_t offset = 0;
+  while (offset < length) {
+    if (out->length == sizeof(out->buffer)) {
+      if (!flushIdfBufferedClientSink(out)) {
+        return false;
+      }
+    }
+    const size_t available = sizeof(out->buffer) - out->length;
+    const size_t remaining = length - offset;
+    const size_t chunk = remaining < available ? remaining : available;
+    memcpy(out->buffer + out->length, data + offset, chunk);
+    out->length += chunk;
+    offset += chunk;
+  }
+  return true;
+}
+
+bool extractJsonStringIdf(const char *json, const char *key, char *out, size_t outCapacity) {
+  if (json == nullptr || key == nullptr || out == nullptr || outCapacity == 0) {
+    return false;
+  }
+  const char *start = strstr(json, key);
+  if (start == nullptr) {
+    return false;
+  }
+  start += strlen(key);
+  size_t written = 0;
+  bool escaping = false;
+  while (*start != '\0') {
+    const char c = *start++;
+    if (escaping) {
+      if (written + 1U < outCapacity) {
+        out[written++] = c == 'n' ? '\n' : c;
+      }
+      escaping = false;
+      continue;
+    }
+    if (c == '\\') {
+      escaping = true;
+      continue;
+    }
+    if (c == '"') {
+      out[written] = '\0';
+      return written > 0;
+    }
+    if (written + 1U < outCapacity) {
+      out[written++] = c;
+    }
+  }
+  out[written] = '\0';
+  return written > 0;
+}
+
+bool readIdfJsonBody(esp_http_client_handle_t client, char *out, size_t outCapacity) {
+  if (client == nullptr || out == nullptr || outCapacity == 0) {
+    return false;
+  }
+  size_t length = 0;
+  while (length + 1U < outCapacity) {
+    const int read = esp_http_client_read(
+        client, out + length, static_cast<int>(outCapacity - length - 1U));
+    if (read <= 0) {
+      break;
+    }
+    length += static_cast<size_t>(read);
+  }
+  out[length] = '\0';
+  return length > 0;
+}
+
+template <typename Writer>
+bool postIdfJson(
+    const char *label,
+    const char *endpoint,
+    size_t contentLength,
+    char *body,
+    size_t bodyCapacity,
+    int *status,
+    Writer writer) {
+  if (label == nullptr || endpoint == nullptr || body == nullptr || status == nullptr) {
+    return false;
+  }
+
+  esp_http_client_config_t config = {};
+  config.url = endpoint;
+  config.timeout_ms = kHttpsTimeoutMs;
+  config.crt_bundle_attach = esp_crt_bundle_attach;
+
+  esp_http_client_handle_t client = esp_http_client_init(&config);
+  if (client == nullptr) {
+    char message[64] = {};
+    snprintf(message, sizeof(message), "%s init failed", label);
+    logCloudLabel(message);
+    return false;
+  }
+
+  bool ok = false;
+  do {
+    esp_http_client_set_method(client, HTTP_METHOD_POST);
+    esp_http_client_set_header(client, "Authorization", "Bearer " BIKE_MB_AI_DASHSCOPE_TOKEN);
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_header(client, "Accept", "application/json");
+    esp_http_client_set_header(client, "Connection", "close");
+
+    logCloudMemory(label);
+    char message[64] = {};
+    snprintf(message, sizeof(message), "%s connect start", label);
+    logCloudLabel(message);
+    esp_err_t err = esp_http_client_open(client, static_cast<int>(contentLength));
+    if (err != ESP_OK) {
+      snprintf(message, sizeof(message), "%s connect failed", label);
+      logCloudLabel(message);
+      break;
+    }
+    snprintf(message, sizeof(message), "%s connect ok", label);
+    logCloudLabel(message);
+
+    IdfBufferedClientSinkContext sink = {client};
+    if (!writer(&sink) || !flushIdfBufferedClientSink(&sink)) {
+      snprintf(message, sizeof(message), "%s post failed", label);
+      logCloudLabel(message);
+      break;
+    }
+
+    const int64_t headerLength = esp_http_client_fetch_headers(client);
+    (void)headerLength;
+    *status = esp_http_client_get_status_code(client);
+    const bool httpOk = *status >= 200 && *status < 300;
+    const bool bodyOk = readIdfJsonBody(client, body, bodyCapacity);
+    ok = httpOk && bodyOk;
+  } while (false);
+
+  esp_http_client_cleanup(client);
+  return ok;
+}
+
+bool postQwenAsrIdf(const BikeMbAudioClip *clip, char *out, size_t outCapacity) {
+  logCloudLabel("qwen asr stage start");
+  const uint32_t stageStartMs = cloudNowMs();
+  IdfCountSinkContext count = {};
+  if (!BikeMbQwenAsr_WriteRequestJson(clip, idfCountSink, &count)) {
+    return false;
+  }
+
+  int status = 0;
+  char body[kMaxJsonResponseBytes] = {};
+  const bool posted = postIdfJson(
+      "qwen asr",
+      BikeMbAiConfig::kQwenAsrEndpoint,
+      count.length,
+      body,
+      sizeof(body),
+      &status,
+      [&](IdfBufferedClientSinkContext *sink) {
+        return BikeMbQwenAsr_WriteRequestJson(clip, idfBufferedClientSink, sink);
+      });
+  logCloudDuration("qwen asr", "body", stageStartMs);
+  const bool ok =
+      posted &&
+      (extractJsonStringIdf(body, "\"content\":\"", out, outCapacity) ||
+       extractJsonStringIdf(body, "\"text\":\"", out, outCapacity) ||
+       extractJsonStringIdf(body, "\"transcription\":\"", out, outCapacity));
+  if (ok) {
+    logCloudText("qwen asr text", out);
+  }
+  logCloudStatus("qwen asr", status, ok);
+  return ok;
+}
+
+bool postQwenChatIdf(const char *text, char *out, size_t outCapacity) {
+  const uint32_t stageStartMs = cloudNowMs();
+  const size_t textLength = strlen(text);
+  IdfCountSinkContext count = {};
+  if (!BikeMbQwenChat_WriteRequestJson(text, textLength, idfCountSink, &count)) {
+    return false;
+  }
+
+  int status = 0;
+  char body[kMaxJsonResponseBytes] = {};
+  char rawAnswer[BikeMbAiConfig::kMaxAnswerBytes] = {};
+  const bool posted = postIdfJson(
+      "qwen chat",
+      BikeMbAiConfig::kQwenChatEndpoint,
+      count.length,
+      body,
+      sizeof(body),
+      &status,
+      [&](IdfBufferedClientSinkContext *sink) {
+        return BikeMbQwenChat_WriteRequestJson(
+            text, textLength, idfBufferedClientSink, sink);
+      });
+  logCloudDuration("qwen chat", "body", stageStartMs);
+  const bool ok =
+      posted &&
+      extractJsonStringIdf(body, "\"content\":\"", rawAnswer, sizeof(rawAnswer)) &&
+      BikeMbQwenChat_CopyBoundedAnswer(rawAnswer, out, outCapacity) > 0;
+  if (ok) {
+    logCloudText("qwen chat answer", out);
+  }
+  logCloudStatus("qwen chat", status, ok);
+  return ok;
+}
+#endif
+
 bool runRealStage(const BikeMbCloudJob &job, const char **detail) {
   if (detail == nullptr) {
     return false;
@@ -867,6 +1114,34 @@ bool runRealStage(const BikeMbCloudJob &job, const char **detail) {
       *detail = ok ? "cosyvoice ready" : "cosyvoice failed";
       return ok;
     }
+  }
+#elif defined(BIKE_MB_USE_ESPIDF_RUNTIME)
+  if (!hasDashScopeToken()) {
+    *detail = "Bailian token unavailable";
+    logCloudLabel("bailian token unavailable");
+    return false;
+  }
+  switch (job.stage) {
+    case BIKE_MB_CLOUD_STAGE_STT: {
+      BikeMbAudioClip clip = {};
+      if (!takeStoredClip(job.requestId, &clip)) {
+        *detail = "audio clip unavailable";
+        return false;
+      }
+      const bool ok = postQwenAsrIdf(&clip, s_sttText, sizeof(s_sttText));
+      BikeMbAudioSession_ReleaseClip(&clip);
+      *detail = ok ? "qwen asr ready" : "qwen asr failed";
+      return ok;
+    }
+    case BIKE_MB_CLOUD_STAGE_LLM: {
+      const bool ok = postQwenChatIdf(s_sttText, s_answerText, sizeof(s_answerText));
+      *detail = BikeMbQwenChat_RedactedLogLabel(ok);
+      return ok;
+    }
+    case BIKE_MB_CLOUD_STAGE_TTS:
+      *detail = "idf cosyvoice playback unavailable";
+      logCloudLabel("idf cosyvoice playback unavailable");
+      return false;
   }
 #else
   (void)job;
