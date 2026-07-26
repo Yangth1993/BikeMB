@@ -44,7 +44,7 @@
 - 2026-07-26：`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 已烧录成功一次；随后串口重新枚举异常，未完成启动日志和 ASR/Chat 板级验收。
 - 2026-07-26：ESP-IDF Cloud Worker 新增 CosyVoice SSE/TTS 路径，使用 `esp_http_client` 请求 `text/event-stream`、解析 SSE/Base64 PCM，并通过 `AudioSession` 写入 TTS PCM；本地构建成功，资源占用 RAM `23.3%`，Flash `10.2%`，尚未进行发声板测。
 - 2026-07-26：用户板级确认最新 ESP-IDF 云端语音固件的录音和回复基础功能正常；该结果覆盖录音、ASR/Chat 和 TTS 回复基础链路。取消路径、长稳资源基线和 underrun 仍需单独验收。
-- 2026-07-26：针对多次板测反馈的音量偏小、长回复卡死风险和中文识别不稳，软件侧新增 TTS 2x 饱和增益、Qwen Chat 更短回答上限和 UTF-8 安全截断、Qwen ASR `language=zh`；`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 构建成功，资源占用 RAM `23.2%`，Flash `10.2%`，待烧录复测。
+- 2026-07-26：针对多次板测反馈的音量偏小、长回复卡死风险和中文识别不稳，软件侧新增 TTS 2x 饱和增益、Qwen Chat 更短回答上限和 UTF-8 安全截断、Qwen ASR `language=zh`；`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 构建成功，资源占用 RAM `23.2%`，Flash `10.2%`，已烧录到 `COM5`，用户确认调优版整体不错，可作为当前稳定语音助手版本保存。
 
 ## 验证入口
 
