@@ -154,7 +154,41 @@ void logCloudText(const char *label, const char *text) {
 #endif
 }
 
-bool extractJsonString(const char *json, const char *key, char *out, size_t outCapacity);
+bool extractJsonString(const char *json, const char *key, char *out, size_t outCapacity) {
+  if (json == nullptr || key == nullptr || out == nullptr || outCapacity == 0) {
+    return false;
+  }
+  const char *start = strstr(json, key);
+  if (start == nullptr) {
+    return false;
+  }
+  start += strlen(key);
+  size_t written = 0;
+  bool escaping = false;
+  while (*start != '\0') {
+    const char c = *start++;
+    if (escaping) {
+      if (written + 1U < outCapacity) {
+        out[written++] = c == 'n' ? '\n' : c;
+      }
+      escaping = false;
+      continue;
+    }
+    if (c == '\\') {
+      escaping = true;
+      continue;
+    }
+    if (c == '"') {
+      out[written] = '\0';
+      return written > 0;
+    }
+    if (written + 1U < outCapacity) {
+      out[written++] = c;
+    }
+  }
+  out[written] = '\0';
+  return written > 0;
+}
 
 void logCloudError(const char *label, const char *body) {
   if (label == nullptr || body == nullptr || body[0] == '\0') {
@@ -619,42 +653,6 @@ bool readSseBody(
   return ok;
 }
 
-bool extractJsonString(const char *json, const char *key, char *out, size_t outCapacity) {
-  if (json == nullptr || key == nullptr || out == nullptr || outCapacity == 0) {
-    return false;
-  }
-  const char *start = strstr(json, key);
-  if (start == nullptr) {
-    return false;
-  }
-  start += strlen(key);
-  size_t written = 0;
-  bool escaping = false;
-  while (*start != '\0') {
-    const char c = *start++;
-    if (escaping) {
-      if (written + 1U < outCapacity) {
-        out[written++] = c == 'n' ? '\n' : c;
-      }
-      escaping = false;
-      continue;
-    }
-    if (c == '\\') {
-      escaping = true;
-      continue;
-    }
-    if (c == '"') {
-      out[written] = '\0';
-      return written > 0;
-    }
-    if (written + 1U < outCapacity) {
-      out[written++] = c;
-    }
-  }
-  out[written] = '\0';
-  return written > 0;
-}
-
 bool postQwenAsr(const BikeMbAudioClip *clip, char *out, size_t outCapacity) {
   logCloudLabel("qwen asr stage start");
   const uint32_t stageStartMs = cloudNowMs();
@@ -1080,6 +1078,329 @@ bool postQwenChatIdf(const char *text, char *out, size_t outCapacity) {
   logCloudStatus("qwen chat", status, ok);
   return ok;
 }
+
+struct IdfTtsPcmBufferContext {
+  int16_t *samples;
+  size_t sampleCount;
+  size_t capacitySamples;
+  bool overflow;
+};
+
+struct IdfTtsSseReadStats {
+  size_t lineCount;
+  size_t audioLineCount;
+  const char *failure;
+  char lastLine[128];
+};
+
+bool idfTtsPcmBufferSink(const int16_t *samples, size_t sampleCount, void *context) {
+  IdfTtsPcmBufferContext *tts = static_cast<IdfTtsPcmBufferContext *>(context);
+  if (samples == nullptr || tts == nullptr || tts->samples == nullptr) {
+    return false;
+  }
+  if (sampleCount > tts->capacitySamples - tts->sampleCount) {
+    tts->overflow = true;
+    return false;
+  }
+  memcpy(tts->samples + tts->sampleCount, samples, sampleCount * sizeof(samples[0]));
+  tts->sampleCount += sampleCount;
+  return true;
+}
+
+void rememberSseLineIdf(IdfTtsSseReadStats *stats, const char *line) {
+  if (stats == nullptr || line == nullptr || line[0] == '\0') {
+    return;
+  }
+  size_t i = 0;
+  while (line[i] != '\0' && i + 1U < sizeof(stats->lastLine)) {
+    const char c = line[i];
+    stats->lastLine[i] = (c >= 32 && c <= 126) ? c : ' ';
+    ++i;
+  }
+  stats->lastLine[i] = '\0';
+}
+
+bool handleSseLineIdf(
+    const char *line,
+    BikeMbCosyVoicePcmStream *stream,
+    BikeMbCosyVoicePcmSink sink,
+    void *context,
+    IdfTtsSseReadStats *stats) {
+  if (stats != nullptr) {
+    ++stats->lineCount;
+    rememberSseLineIdf(stats, line);
+    if (strstr(line, "\"data\":\"") != nullptr) {
+      ++stats->audioLineCount;
+    }
+  }
+  return BikeMbCosyVoice_HandleSseLineWithStream(line, stream, sink, context);
+}
+
+bool readSseBodyIdf(
+    esp_http_client_handle_t client,
+    BikeMbCosyVoicePcmSink sink,
+    void *context,
+    IdfTtsSseReadStats *stats) {
+  if (client == nullptr || sink == nullptr) {
+    return false;
+  }
+
+  char *line = static_cast<char *>(heap_caps_malloc(kMaxSseLineBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (line == nullptr) {
+    line = static_cast<char *>(heap_caps_malloc(kMaxSseLineBytes, MALLOC_CAP_8BIT));
+  }
+  if (line == nullptr) {
+    logCloudLabel("cosyvoice sse buffer allocation failed");
+    return false;
+  }
+
+  BikeMbCosyVoicePcmStream stream = {};
+  BikeMbCosyVoice_PcmStreamInit(&stream);
+  size_t length = 0;
+  bool ok = true;
+  const uint32_t deadline = cloudNowMs() + kHttpsTimeoutMs;
+  while (static_cast<int32_t>(cloudNowMs() - deadline) < 0 && ok) {
+    char chunk[256] = {};
+    const int read = esp_http_client_read(client, chunk, sizeof(chunk));
+    if (read < 0) {
+      ok = false;
+      if (stats != nullptr) {
+        stats->failure = "cosyvoice sse read failed";
+      }
+      break;
+    }
+    if (read == 0) {
+      break;
+    }
+    for (int i = 0; i < read; ++i) {
+      const char c = chunk[i];
+      if (c == '\n') {
+        line[length] = '\0';
+        ok = handleSseLineIdf(line, &stream, sink, context, stats);
+        length = 0;
+        if (!ok && stats != nullptr) {
+          stats->failure = "cosyvoice sse handler failed";
+        }
+        if (!ok) {
+          break;
+        }
+      } else if (c != '\r' && length + 1U < kMaxSseLineBytes) {
+        line[length++] = c;
+      } else if (c != '\r') {
+        logCloudLabel("cosyvoice sse line too large");
+        if (stats != nullptr) {
+          stats->failure = "cosyvoice sse line too large";
+        }
+        ok = false;
+        break;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+
+  if (ok && length > 0) {
+    line[length] = '\0';
+    ok = handleSseLineIdf(line, &stream, sink, context, stats);
+    if (!ok && stats != nullptr) {
+      stats->failure = "cosyvoice sse handler failed";
+    }
+  }
+  if (ok) {
+    ok = BikeMbCosyVoice_PcmStreamFinish(&stream, sink, context);
+    if (!ok && stats != nullptr) {
+      stats->failure = "cosyvoice sse pcm finish failed";
+    }
+  }
+  if (ok && stats != nullptr && stats->audioLineCount == 0) {
+    stats->failure = "cosyvoice sse no audio data";
+  }
+  free(line);
+  return ok;
+}
+
+void logTtsSseFailureIdf(const IdfTtsSseReadStats &stats, const IdfTtsPcmBufferContext &tts) {
+  if (tts.overflow) {
+    logCloudLabel("cosyvoice sse pcm overflow");
+  } else if (stats.failure != nullptr) {
+    logCloudLabel(stats.failure);
+  } else if (stats.audioLineCount == 0) {
+    logCloudLabel("cosyvoice sse no audio data");
+  } else {
+    logCloudLabel("cosyvoice sse pcm missing");
+  }
+  if (stats.lastLine[0] != '\0') {
+    char message[176] = {};
+    snprintf(message, sizeof(message), "cosyvoice sse last line=%s", stats.lastLine);
+    logCloudLabel(message);
+  }
+}
+
+bool playTtsPcmBufferIdf(const IdfTtsPcmBufferContext *tts, uint32_t requestId) {
+  if (tts == nullptr || tts->samples == nullptr || tts->sampleCount == 0) {
+    return false;
+  }
+  if (!BikeMbAudioSession_Acquire(BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK, requestId)) {
+    char message[96] = {};
+    snprintf(
+        message,
+        sizeof(message),
+        "cosyvoice playback acquire failed owner=%d request=%lu",
+        static_cast<int>(BikeMbAudioSession_GetOwner()),
+        static_cast<unsigned long>(BikeMbAudioSession_GetRequestId()));
+    logCloudLabel(message);
+    return false;
+  }
+
+  int16_t stereo[128 * 2] = {};
+  const size_t playableSamples =
+      tts->sampleCount < kMaxTtsPlaybackSamples ? tts->sampleCount : kMaxTtsPlaybackSamples;
+  if (playableSamples < tts->sampleCount) {
+    char message[96] = {};
+    snprintf(
+        message,
+        sizeof(message),
+        "cosyvoice playback clipped samples=%lu limit=%lu",
+        static_cast<unsigned long>(tts->sampleCount),
+        static_cast<unsigned long>(kMaxTtsPlaybackSamples));
+    logCloudLabel(message);
+  }
+
+  size_t offset = 0;
+  bool ok = true;
+  while (offset < playableSamples && isRequestValid(requestId)) {
+    const size_t chunkSamples =
+        (playableSamples - offset) < 128 ? (playableSamples - offset) : 128;
+    for (size_t i = 0; i < chunkSamples; ++i) {
+      stereo[i * 2] = tts->samples[offset + i];
+      stereo[i * 2 + 1] = tts->samples[offset + i];
+    }
+    const size_t written = BikeMbAudioSession_WriteStereoPcm(
+        BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK,
+        requestId,
+        stereo,
+        chunkSamples);
+    if (written == 0) {
+      char message[96] = {};
+      snprintf(
+          message,
+          sizeof(message),
+          "cosyvoice playback write failed offset=%lu samples=%lu",
+          static_cast<unsigned long>(offset),
+          static_cast<unsigned long>(tts->sampleCount));
+      logCloudLabel(message);
+      ok = false;
+      break;
+    }
+    offset += written;
+  }
+  BikeMbAudioSession_Release(BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK, requestId);
+  return ok && offset == playableSamples;
+}
+
+bool postCosyVoiceTtsIdf(const char *text, uint32_t requestId) {
+  const size_t textLength = strlen(text);
+  IdfCountSinkContext count = {};
+  if (!BikeMbCosyVoice_WriteRequestJson(text, textLength, idfCountSink, &count)) {
+    return false;
+  }
+
+  IdfTtsPcmBufferContext tts = {};
+  tts.samples = static_cast<int16_t *>(
+      heap_caps_malloc(kMaxTtsPcmSamples * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (tts.samples == nullptr) {
+    tts.samples = static_cast<int16_t *>(
+        heap_caps_malloc(kMaxTtsPcmSamples * sizeof(int16_t), MALLOC_CAP_8BIT));
+  }
+  tts.capacitySamples = kMaxTtsPcmSamples;
+  if (tts.samples == nullptr) {
+    logCloudLabel("cosyvoice pcm buffer allocation failed");
+    return false;
+  }
+
+  int status = 0;
+  bool readyToPlay = false;
+  for (uint8_t attempt = 1; attempt <= kTtsMaxAttempts && !readyToPlay; ++attempt) {
+    if (!isRequestValid(requestId)) {
+      break;
+    }
+    tts.sampleCount = 0;
+    tts.overflow = false;
+    const uint32_t stageStartMs = cloudNowMs();
+
+    esp_http_client_config_t config = {};
+    config.url = BikeMbAiConfig::kCosyVoiceTtsEndpoint;
+    config.timeout_ms = kHttpsTimeoutMs;
+    config.crt_bundle_attach = esp_crt_bundle_attach;
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (client == nullptr) {
+      logCloudLabel("cosyvoice init failed");
+      break;
+    }
+
+    bool posted = false;
+    bool httpOk = false;
+    IdfTtsSseReadStats stats = {};
+    do {
+      esp_http_client_set_method(client, HTTP_METHOD_POST);
+      esp_http_client_set_header(client, "Authorization", "Bearer " BIKE_MB_AI_DASHSCOPE_TOKEN);
+      esp_http_client_set_header(client, "Content-Type", "application/json");
+      esp_http_client_set_header(client, "Accept", "text/event-stream");
+      esp_http_client_set_header(client, "X-DashScope-SSE", "enable");
+      esp_http_client_set_header(client, "Connection", "close");
+
+      logCloudMemory("cosyvoice");
+      logCloudLabel("cosyvoice connect start");
+      if (esp_http_client_open(client, static_cast<int>(count.length)) != ESP_OK) {
+        logCloudLabel("cosyvoice connect failed");
+        break;
+      }
+      logCloudLabel("cosyvoice connect ok");
+
+      IdfBufferedClientSinkContext sink = {client};
+      posted = BikeMbCosyVoice_WriteRequestJson(text, textLength, idfBufferedClientSink, &sink) &&
+               flushIdfBufferedClientSink(&sink);
+      if (!posted) {
+        logCloudLabel("cosyvoice post failed");
+        break;
+      }
+      logCloudDuration("cosyvoice", "request sent", stageStartMs);
+      const int64_t headerLength = esp_http_client_fetch_headers(client);
+      (void)headerLength;
+      status = esp_http_client_get_status_code(client);
+      logCloudDuration("cosyvoice", "headers", stageStartMs);
+      httpOk = status >= 200 && status < 300;
+      if (!httpOk) {
+        char body[kMaxJsonResponseBytes] = {};
+        if (readIdfJsonBody(client, body, sizeof(body))) {
+          logCloudDuration("cosyvoice", "body", stageStartMs);
+          logCloudError("cosyvoice", body);
+        }
+        break;
+      }
+      const bool streamed = readSseBodyIdf(client, idfTtsPcmBufferSink, &tts, &stats);
+      logCloudDuration("cosyvoice", "body", stageStartMs);
+      readyToPlay = streamed && tts.sampleCount > 0;
+      if (!readyToPlay) {
+        logCloudLabel("cosyvoice pcm missing");
+        logTtsSseFailureIdf(stats, tts);
+      }
+    } while (false);
+
+    esp_http_client_cleanup(client);
+    if (readyToPlay) {
+      ESP_LOGI("BikeMbCloud", "cosyvoice pcm samples=%u", static_cast<unsigned>(tts.sampleCount));
+      break;
+    }
+    if (attempt < kTtsMaxAttempts && isRequestValid(requestId)) {
+      logCloudLabel("cosyvoice retry");
+      vTaskDelay(pdMS_TO_TICKS(250));
+    }
+  }
+  const bool played = readyToPlay && playTtsPcmBufferIdf(&tts, requestId);
+  logCloudStatus("cosyvoice", status, played);
+  free(tts.samples);
+  return played;
+}
 #endif
 
 bool runRealStage(const BikeMbCloudJob &job, const char **detail) {
@@ -1138,10 +1459,11 @@ bool runRealStage(const BikeMbCloudJob &job, const char **detail) {
       *detail = BikeMbQwenChat_RedactedLogLabel(ok);
       return ok;
     }
-    case BIKE_MB_CLOUD_STAGE_TTS:
-      *detail = "idf cosyvoice playback unavailable";
-      logCloudLabel("idf cosyvoice playback unavailable");
-      return false;
+    case BIKE_MB_CLOUD_STAGE_TTS: {
+      const bool ok = postCosyVoiceTtsIdf(s_answerText, job.requestId);
+      *detail = ok ? "cosyvoice ready" : "cosyvoice failed";
+      return ok;
+    }
   }
 #else
   (void)job;

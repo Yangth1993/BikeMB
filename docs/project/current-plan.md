@@ -10,9 +10,9 @@
 
 ## 下一步
 
-1. 等 USB 串口恢复后，烧录 `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test`，只验证 ASR/Chat 日志和 UI/runtime 稳定，不验证蜂鸣或 TTS 播放。
-2. 迁移 ESP-IDF CosyVoice/TTS 播放和取消路径，迁移前不主动发声。
-3. 记录 ESP-IDF 语音闭环的 heap、PSRAM、task stack high-water mark、UI 延迟和 audio underrun 基线，再请求架构师关闭 ADR-0004。
+1. 等 USB 串口稳定后，先烧录并观察 `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 的启动、UI/runtime、Wi-Fi、录音、ASR/Chat 日志。
+2. 经用户确认允许后，再触发一次 ESP-IDF CosyVoice/TTS 播放板测；不要再运行蜂鸣器或开机发声自测。
+3. 继续补齐 ESP-IDF 取消路径，记录语音闭环的 heap、PSRAM、task stack high-water mark、UI 延迟和 audio underrun 基线，再请求架构师关闭 ADR-0004。
 
 ## 最新验收记录
 
@@ -41,6 +41,8 @@
 - 2026-07-24：跳过 ESP-IDF 蜂鸣器自检，不再继续发声测试；相关未提交改动已撤销。
 - 2026-07-24：新增无声 `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 构建环境，启用 ESP-IDF AI Assistant、Wi-Fi、AudioSession 和真实 Qwen ASR/Qwen Chat transport；CosyVoice/TTS 播放仍显式返回 `idf cosyvoice playback unavailable`。
 - 2026-07-24：`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 构建成功，资源占用 RAM `23.3%`，Flash `10.2%`；当前 Windows 未枚举到串口，尚未烧录上板。
+- 2026-07-26：`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 已烧录成功一次；随后串口重新枚举异常，未完成启动日志和 ASR/Chat 板级验收。
+- 2026-07-26：ESP-IDF Cloud Worker 新增 CosyVoice SSE/TTS 路径，使用 `esp_http_client` 请求 `text/event-stream`、解析 SSE/Base64 PCM，并通过 `AudioSession` 写入 TTS PCM；本地构建成功，资源占用 RAM `23.3%`，Flash `10.2%`，尚未进行发声板测。
 
 ## 验证入口
 
@@ -58,3 +60,4 @@
 - 固件烧录：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test -t upload`
 - ESP-IDF 双核构建：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf`
 - ESP-IDF 双核烧录：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf -t upload`
+- ESP-IDF 云端语音构建：`python -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test`

@@ -29,7 +29,7 @@ def test_idf_cloud_transport_has_non_speaker_board_env() -> None:
     check("BIKE_MB_AI_USE_MOCK_PROVIDERS" not in env, "IDF cloud env must use real providers, not mock providers.")
 
 
-def test_idf_cloud_worker_uses_esp_http_client_for_asr_and_chat_only() -> None:
+def test_idf_cloud_worker_uses_esp_http_client_for_asr_chat_and_tts() -> None:
     source = read_repo_text(CLOUD_SOURCE)
     cmake = read_repo_text(CMAKE)
 
@@ -45,7 +45,18 @@ def test_idf_cloud_worker_uses_esp_http_client_for_asr_and_chat_only() -> None:
     check("esp_http_client_cleanup" in source, "IDF cloud worker must always clean up HTTP handles.")
     check("postQwenAsrIdf" in source, "IDF cloud worker must migrate Qwen ASR first.")
     check("postQwenChatIdf" in source, "IDF cloud worker must migrate Qwen Chat first.")
-    check("idf cosyvoice playback unavailable" in source, "IDF TTS playback must remain explicit and silent for this step.")
+    check("postCosyVoiceTtsIdf" in source, "IDF cloud worker must migrate CosyVoice TTS after ASR/Chat.")
+    check("text/event-stream" in source, "IDF CosyVoice requests must accept SSE responses.")
+    check("X-DashScope-SSE" in source, "IDF CosyVoice requests must enable DashScope SSE.")
+    check("readSseBodyIdf" in source, "IDF cloud worker must stream and parse CosyVoice SSE bodies.")
+    check(
+        "BikeMbAudioSession_WriteStereoPcm" in source,
+        "IDF CosyVoice playback must use AudioSession, not direct I2S access.",
+    )
+    check(
+        "idf cosyvoice playback unavailable" not in source,
+        "IDF TTS playback must no longer be the silent unavailable stub.",
+    )
     check("BIKE_MB_USE_ESPIDF_RUNTIME" in source, "IDF cloud transport must be gated to the ESP-IDF runtime.")
     check("esp_http_client" in cmake, "ESP-IDF CMake component requirements must include esp_http_client.")
     check("Serial.println(BIKE_MB_AI_DASHSCOPE_TOKEN)" not in source, "Tokens must never be logged.")
@@ -54,5 +65,5 @@ def test_idf_cloud_worker_uses_esp_http_client_for_asr_and_chat_only() -> None:
 
 if __name__ == "__main__":
     test_idf_cloud_transport_has_non_speaker_board_env()
-    test_idf_cloud_worker_uses_esp_http_client_for_asr_and_chat_only()
+    test_idf_cloud_worker_uses_esp_http_client_for_asr_chat_and_tts()
     print("PASS test_idf_cloud_transport_contract")

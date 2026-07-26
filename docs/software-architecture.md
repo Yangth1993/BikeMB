@@ -11,7 +11,7 @@
 
 当前 Arduino 路径仍是已上板验证最多的路径，承载 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 AI 语音闭环。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。
 
-ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 的 ESP-IDF codec/I2S 初始化已完成第一轮上板验证，Qwen ASR/Qwen Chat 的 ESP-IDF HTTPS JSON transport 已能构建，但 ESP-IDF TTS 播放、取消和完整语音闭环还没有完成回归，所以不能关闭 ADR-0004。
+ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 的 ESP-IDF codec/I2S 初始化已完成第一轮上板验证，Qwen ASR、Qwen Chat 和 CosyVoice TTS 的 ESP-IDF HTTPS/SSE transport 已能构建，但 ESP-IDF 启动日志、发声板测、取消和完整语音闭环还没有完成回归，所以不能关闭 ADR-0004。
 
 ## Bootloader 与双核启动链路
 
@@ -93,7 +93,7 @@ flowchart TB
 4. I2S0、ES7210 和 ES8311 仍只有一个运行时 owner；DMA buffer 不跨队列复制整段音频，取消和超时路径可回收所有权。
 5. 双核构建、合同测试和板级启动/触摸/显示/录音/TTS 回归通过，并记录 heap、PSRAM、task stack、UI 延迟和 audio underrun 基线。
 
-当前状态：**门禁未满足**。代码层第一阶段已经完成：ESP-IDF `app_main()` 会启动 `bike_runtime` Core 0 和 `bike_ui` Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 已固定到 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task 执行。AudioSession 已在 ESP-IDF `driver/i2s_std.h` 路径上完成 codec/I2S 初始化上板验证。门禁仍需 ESP-IDF 录音、TTS、取消、真实云 transport 和完整资源基线确认；所以 `MusicService` 和点歌保持“计划中”，不应作为开发工程师的当前实现任务。
+当前状态：**门禁未满足**。代码层第一阶段已经完成：ESP-IDF `app_main()` 会启动 `bike_runtime` Core 0 和 `bike_ui` Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 已固定到 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task 执行。AudioSession 已在 ESP-IDF `driver/i2s_std.h` 路径上完成 codec/I2S 初始化上板验证；Qwen ASR、Qwen Chat、CosyVoice TTS 已有 ESP-IDF `esp_http_client` 构建路径。门禁仍需 ESP-IDF 启动日志、录音、TTS 发声、取消和完整资源基线确认；所以 `MusicService` 和点歌保持“计划中”，不应作为开发工程师的当前实现任务。
 
 ## ESP-IDF 双核框架迁移
 
@@ -115,8 +115,8 @@ flowchart TB
 
 | 项 | 为什么还不能算完成 |
 | --- | --- |
-| AudioSession ESP-IDF 回归 | codec/I2S 初始化已迁到 ESP-IDF `driver/i2s_std.h` 并上板到 `session ready`；录音、TTS 播放、取消和 underrun 基线仍需回归。 |
-| Wi-Fi/HTTPS transport | 真实云闭环仍依赖 Arduino `WiFiClientSecure`；ESP-IDF 下需要 `esp_wifi`、`esp_http_client` 或等价 adapter。 |
+| AudioSession ESP-IDF 回归 | codec/I2S 初始化已迁到 ESP-IDF `driver/i2s_std.h` 并上板到 `session ready`；录音、TTS 发声、取消和 underrun 基线仍需回归。 |
+| Wi-Fi/HTTPS transport | ESP-IDF 下 Wi-Fi、Qwen ASR、Qwen Chat、CosyVoice SSE/TTS 已有构建路径；仍需板级云闭环和异常/取消回归。 |
 | 语音闭环板级验证 | 还没在 ESP-IDF 双核 env 上完成录音、STT、LLM、TTS、播放和取消回归。 |
 | 资源基线 | 还没记录 heap、largest block、PSRAM、task stack high-water mark、UI 延迟和 audio underrun。 |
 | 架构门禁验收 | ADR-0004 要求软件架构根据代码、构建、板级验证和资源数据一起确认，不能只看能编译。 |
@@ -562,7 +562,7 @@ sequenceDiagram
 | `esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test` | Arduino | Qwen ASR + Qwen Chat + CosyVoice 真实云闭环。 | AI + AudioSession，测试专用 insecure TLS |
 | `esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF | Runtime/Event/Service 迁移构建。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1` |
 | `esp32-s3-touch-lcd-1-85c-idf-audio-session-test` | ESP-IDF | AudioSession codec/I2S 初始化迁移验证。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1`，`BIKE_MB_IDF_ENABLE_AUDIO_SESSION=ON` |
-| `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` | ESP-IDF | 无声真实云迁移验证，当前只到 Qwen ASR/Qwen Chat。 | AI + AudioSession，TTS 播放显式未迁移 |
+| `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` | ESP-IDF | 真实云迁移验证，覆盖 Qwen ASR、Qwen Chat 和 CosyVoice SSE/TTS 构建路径。 | AI + AudioSession，发声板测需单独确认 |
 
 ### 默认分区
 
@@ -746,7 +746,7 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `test_runtime_contract.py` | ESP-IDF runtime/event/service 骨架。 |
 | `test_runtime_plan_contract.py` | Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。 |
 | `test_idf_audio_session_contract.py` | ESP-IDF AudioSession 独立构建环境、CMake feature gate 和 `i2s_std` 初始化边界。 |
-| `test_idf_cloud_transport_contract.py` | ESP-IDF real cloud 环境、`esp_http_client` ASR/Chat transport 和 TTS 静默未迁移边界。 |
+| `test_idf_cloud_transport_contract.py` | ESP-IDF real cloud 环境、`esp_http_client` ASR/Chat/CosyVoice SSE transport 和 AudioSession TTS 播放边界。 |
 | `test_ai_framework.py` | AI 配置、BOOT 键 reducer、AI 状态机、UI 映射、task/queue 所有权和 main feature gate。 |
 | `test_dashboard_ai_ui_contract.py` | Dashboard 只从 snapshot 派生 AI 页面，不直接依赖 cloud/audio/Assistant 命令接口。 |
 | `test_wifi_service_contract.py` | Wi-Fi service 不阻塞启动、配置隔离、重连 reducer 和 Assistant 状态发布。 |
@@ -785,4 +785,4 @@ py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf
 - 取消能使旧 request 失效并停止本地音频，但不能主动中断阻塞 HTTPS；单一 CloudWorker 会延迟后续云 job。
 - CosyVoice PCM 当前完整缓冲后播放，PSRAM 上限约 625 KiB，不是低延迟流式播放。
 - HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 尚未实现。
-- ESP-IDF runtime 已完成代码层第一阶段迁移，AudioSession codec/I2S 初始化已完成第一轮上板验证；云 transport、录音/TTS/取消板级语音闭环和完整资源基线尚未完成。
+- ESP-IDF runtime 已完成代码层第一阶段迁移，AudioSession codec/I2S 初始化已完成第一轮上板验证，Qwen ASR/Chat/CosyVoice transport 已构建；录音/TTS 发声/取消板级语音闭环和完整资源基线尚未完成。
