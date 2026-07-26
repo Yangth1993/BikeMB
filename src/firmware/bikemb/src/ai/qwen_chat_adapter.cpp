@@ -50,6 +50,41 @@ bool writeJsonEscaped(
   return true;
 }
 
+size_t utf8SafePrefixLength(const char *text, size_t limit) {
+  if (text == nullptr) {
+    return 0;
+  }
+  size_t safe = 0;
+  size_t offset = 0;
+  while (offset < limit && text[offset] != '\0') {
+    const unsigned char c = static_cast<unsigned char>(text[offset]);
+    size_t width = 1;
+    if ((c & 0x80U) == 0) {
+      width = 1;
+    } else if ((c & 0xE0U) == 0xC0U) {
+      width = 2;
+    } else if ((c & 0xF0U) == 0xE0U) {
+      width = 3;
+    } else if ((c & 0xF8U) == 0xF0U) {
+      width = 4;
+    } else {
+      break;
+    }
+    if (offset + width > limit) {
+      break;
+    }
+    for (size_t i = 1; i < width; ++i) {
+      const unsigned char next = static_cast<unsigned char>(text[offset + i]);
+      if ((next & 0xC0U) != 0x80U) {
+        return safe;
+      }
+    }
+    offset += width;
+    safe = offset;
+  }
+  return safe;
+}
+
 }  // namespace
 
 bool BikeMbQwenChat_WriteRequestJson(
@@ -63,10 +98,10 @@ bool BikeMbQwenChat_WriteRequestJson(
          writeText(
              sink,
              context,
-             "\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in Chinese for spoken playback. Use one sentence and stay within 30 Chinese characters.\"},"
+             "\",\"messages\":[{\"role\":\"system\",\"content\":\"Answer in Chinese for spoken playback. Use one short sentence and stay within 20 Chinese characters.\"},"
              "{\"role\":\"user\",\"content\":\"") &&
          writeJsonEscaped(text, textLength, sink, context) &&
-         writeText(sink, context, "\"}],\"max_tokens\":64,\"stream\":false}");
+         writeText(sink, context, "\"}],\"max_tokens\":32,\"stream\":false}");
 }
 
 size_t BikeMbQwenChat_CopyBoundedAnswer(const char *text, char *out, size_t outCapacity) {
@@ -78,8 +113,9 @@ size_t BikeMbQwenChat_CopyBoundedAnswer(const char *text, char *out, size_t outC
       BikeMbAiConfig::kMaxAnswerBytes < (outCapacity - 1U)
           ? BikeMbAiConfig::kMaxAnswerBytes
           : (outCapacity - 1U);
+  const size_t safeLimit = utf8SafePrefixLength(text, limit);
   size_t written = 0;
-  while (written < limit && text[written] != '\0') {
+  while (written < safeLimit && text[written] != '\0') {
     out[written] = text[written];
     ++written;
   }

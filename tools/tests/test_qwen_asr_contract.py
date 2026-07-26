@@ -33,8 +33,8 @@ def test_qwen_asr_adapter_streams_wav_base64_json() -> None:
         "Qwen ASR OpenAI-compatible request must use input_audio.data content items.",
     )
     check(
-        '\\"asr_options\\":{\\"enable_itn\\":false}' in source,
-        "Qwen ASR OpenAI-compatible request must pass ASR options at top level.",
+        '\\"asr_options\\":{\\"language\\":\\"zh\\",\\"enable_itn\\":false}' in source,
+        "Qwen ASR OpenAI-compatible request must specify Chinese language and ASR options at top level.",
     )
     check("BikeMbQwenAsrBase64State" in source, "Qwen ASR adapter must keep Base64 carry across WAV and PCM chunks.")
     check("BikeMbQwenAsr_WriteBase64Chunk" in source, "Qwen ASR adapter must write Base64 in chunks.")

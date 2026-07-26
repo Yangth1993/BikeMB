@@ -196,5 +196,5 @@ bool BikeMbQwenAsr_WriteRequestJson(
          writeText(
              sink,
              context,
-             "\"}}]}],\"stream\":false,\"asr_options\":{\"enable_itn\":false}}");
+             "\"}}]}],\"stream\":false,\"asr_options\":{\"language\":\"zh\",\"enable_itn\":false}}");
 }

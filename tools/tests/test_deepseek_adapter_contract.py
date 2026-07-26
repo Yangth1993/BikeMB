@@ -17,7 +17,7 @@ def test_deepseek_adapter_files_and_config_exist() -> None:
     check("ai/deepseek_adapter.cpp" in cmake, "ESP-IDF CMake source list must include DeepSeek adapter.")
     check("kDeepSeekEndpoint" in config, "Config must track the non-secret DeepSeek endpoint.")
     check("kDeepSeekModel" in config, "Config must track the DeepSeek model.")
-    check("kMaxAnswerBytes = 384" in config, "Config must cap LLM answers at 384 bytes.")
+    check("kMaxAnswerBytes = 192" in config, "Config must cap LLM answers at 192 bytes.")
     check("api_key" not in config.lower(), "Tracked AI config must not contain API keys.")
 
 

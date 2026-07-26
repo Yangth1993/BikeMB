@@ -53,6 +53,8 @@ def test_idf_cloud_worker_uses_esp_http_client_for_asr_chat_and_tts() -> None:
         "BikeMbAudioSession_WriteStereoPcm" in source,
         "IDF CosyVoice playback must use AudioSession, not direct I2S access.",
     )
+    check("kTtsPlaybackGain = 2" in source, "IDF CosyVoice playback must apply bounded software gain.")
+    check("applyTtsPlaybackGain" in source, "IDF CosyVoice playback must saturate amplified PCM samples.")
     check(
         "idf cosyvoice playback unavailable" not in source,
         "IDF TTS playback must no longer be the silent unavailable stub.",

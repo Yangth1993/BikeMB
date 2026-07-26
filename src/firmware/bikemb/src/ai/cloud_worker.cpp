@@ -45,6 +45,7 @@ constexpr size_t kMaxSseLineBytes = 12 * 1024;
 constexpr size_t kHttpWriteBufferBytes = 1024;
 constexpr size_t kMaxTtsPcmSamples = 320000;
 constexpr size_t kMaxTtsPlaybackSamples = 96000;
+constexpr int32_t kTtsPlaybackGain = 2;
 constexpr uint8_t kTtsMaxAttempts = 2;
 
 QueueHandle_t s_queue = nullptr;
@@ -79,6 +80,17 @@ bool hasDashScopeToken() {
   return BIKE_MB_AI_DASHSCOPE_TOKEN[0] != '\0' &&
          strcmp(BIKE_MB_AI_DASHSCOPE_TOKEN, "CHANGE_ME_DASHSCOPE_TOKEN") != 0 &&
          strcmp(BIKE_MB_AI_DASHSCOPE_TOKEN, "CHANGE_ME_STT_TOKEN") != 0;
+}
+
+int16_t applyTtsPlaybackGain(int16_t sample) {
+  const int32_t amplified = static_cast<int32_t>(sample) * kTtsPlaybackGain;
+  if (amplified > INT16_MAX) {
+    return INT16_MAX;
+  }
+  if (amplified < INT16_MIN) {
+    return INT16_MIN;
+  }
+  return static_cast<int16_t>(amplified);
 }
 
 uint32_t cloudNowMs() {
@@ -438,8 +450,9 @@ bool playTtsPcmBuffer(const TtsPcmBufferContext *tts, uint32_t requestId) {
     const size_t chunkSamples =
         (playableSamples - offset) < 128 ? (playableSamples - offset) : 128;
     for (size_t i = 0; i < chunkSamples; ++i) {
-      stereo[i * 2] = tts->samples[offset + i];
-      stereo[i * 2 + 1] = tts->samples[offset + i];
+      const int16_t sample = applyTtsPlaybackGain(tts->samples[offset + i]);
+      stereo[i * 2] = sample;
+      stereo[i * 2 + 1] = sample;
     }
     const size_t written = BikeMbAudioSession_WriteStereoPcm(
         BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK,
@@ -1271,8 +1284,9 @@ bool playTtsPcmBufferIdf(const IdfTtsPcmBufferContext *tts, uint32_t requestId) 
     const size_t chunkSamples =
         (playableSamples - offset) < 128 ? (playableSamples - offset) : 128;
     for (size_t i = 0; i < chunkSamples; ++i) {
-      stereo[i * 2] = tts->samples[offset + i];
-      stereo[i * 2 + 1] = tts->samples[offset + i];
+      const int16_t sample = applyTtsPlaybackGain(tts->samples[offset + i]);
+      stereo[i * 2] = sample;
+      stereo[i * 2 + 1] = sample;
     }
     const size_t written = BikeMbAudioSession_WriteStereoPcm(
         BIKE_MB_AUDIO_SESSION_OWNER_AI_PLAYBACK,

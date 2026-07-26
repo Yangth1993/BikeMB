@@ -1,3 +1,7 @@
+import subprocess
+import tempfile
+from pathlib import Path
+
 from contract_helpers import REPO_ROOT, check, read_repo_text
 
 
@@ -17,7 +21,7 @@ def test_qwen_chat_adapter_files_and_config_exist() -> None:
     check("ai/qwen_chat_adapter.cpp" in cmake, "ESP-IDF CMake source list must include Qwen chat adapter.")
     check("kQwenChatEndpoint" in config, "Config must track the non-secret Qwen chat endpoint.")
     check('kQwenChatModel = "qwen-plus"' in config, "Config must default to Qwen chat on Bailian.")
-    check("kMaxAnswerBytes = 384" in config, "Config must cap Qwen answers to short spoken replies.")
+    check("kMaxAnswerBytes = 192" in config, "Config must cap Qwen answers to short spoken replies.")
     check("api_key" not in config.lower(), "Tracked AI config must not contain API keys.")
 
 
@@ -33,14 +37,37 @@ def test_qwen_chat_adapter_limits_response_and_redacts_logs() -> None:
     check("BikeMbAiConfig::kMaxAnswerBytes" in source, "Qwen adapter must enforce max answer bytes.")
     check("messages" in source and "user" in source, "Qwen request must use chat messages.")
     check("max_tokens" in source, "Qwen request must bound provider output tokens.")
-    check("30 Chinese characters" in source, "Qwen system prompt must constrain spoken reply length.")
-    check('\\"max_tokens\\":64' in source, "Qwen request must keep spoken replies short.")
+    check("20 Chinese characters" in source, "Qwen system prompt must constrain spoken reply length.")
+    check('\\"max_tokens\\":32' in source, "Qwen request must keep spoken replies short.")
+    check("utf8SafePrefixLength" in source, "Qwen bounded copy must avoid truncating UTF-8 sequences.")
     check("question" not in source.lower(), "Qwen diagnostics must not name or expose question text.")
     check("answer text" not in source.lower(), "Qwen diagnostics must not expose answer text.")
     check("qwen chat ready" in source and "qwen chat failed" in source, "Qwen diagnostics must be sanitized.")
 
 
+def test_qwen_chat_native_copy_keeps_utf8_valid() -> None:
+    with tempfile.TemporaryDirectory(prefix="bikemb-qwen-chat-") as temp_dir:
+      output = Path(temp_dir) / "qwen_chat_adapter_test.exe"
+      subprocess.run(
+          [
+              "g++",
+              "-std=c++17",
+              "-Wall",
+              "-Wextra",
+              "-Werror",
+              str(REPO_ROOT / QWEN_SOURCE),
+              str(REPO_ROOT / "tools" / "tests" / "qwen_chat_adapter_test.cpp"),
+              "-o",
+              str(output),
+          ],
+          check=True,
+          cwd=REPO_ROOT,
+      )
+      subprocess.run([str(output)], check=True, cwd=REPO_ROOT)
+
+
 if __name__ == "__main__":
     test_qwen_chat_adapter_files_and_config_exist()
     test_qwen_chat_adapter_limits_response_and_redacts_logs()
+    test_qwen_chat_native_copy_keeps_utf8_valid()
     print("PASS test_qwen_chat_contract")
