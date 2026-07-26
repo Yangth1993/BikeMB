@@ -10,7 +10,8 @@
 BOOT/GPIO0 -> 录音 -> Qwen ASR -> Qwen Chat -> CosyVoice TTS -> 喇叭播放
 ```
 
-- 真实链路由 PlatformIO 环境 `esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test` 开启。
+- Arduino 真实链路由 PlatformIO 环境 `esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test` 开启。
+- ESP-IDF 真实链路由 `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 开启；2026-07-26 用户已确认基础录音和回复正常，调优版可作为当前稳定语音助手版本保存。
 - mock 链路由 `esp32-s3-touch-lcd-1-85c-ai-voice-mock-test` 开启，保留本地阶段延时和短提示音。
 - 默认环境仍关闭 `BIKE_MB_ENABLE_AI_ASSISTANT`，AI 不影响基础码表启动。
 - 当前真实 LLM 调用是 `qwen-plus`。`deepseek_adapter.*` 已存在并有契约测试，但尚未接入 `CloudWorker`。
@@ -20,8 +21,11 @@ BOOT/GPIO0 -> 录音 -> Qwen ASR -> Qwen Chat -> CosyVoice TTS -> 喇叭播放
 
 ```mermaid
 flowchart LR
-  Loop["Arduino loop"] --> Button["AI Button 函数组"]
-  Button --> Page["DashboardApp_ShowAiPage"]
+  Loop["Arduino loop<br/>回归路径"] --> Button["AI Button 函数组"]
+  Runtime["bike_runtime / Core 0<br/>ESP-IDF 路径"] --> Button
+  Button --> PageEvent["ShowAiPage runtime event<br/>ESP-IDF"]
+  Button --> PageDirect["DashboardApp_ShowAiPage<br/>Arduino"]
+  PageEvent --> UiTask["bike_ui / Core 1"]
   Button --> Assistant["AI Assistant 函数组"]
   Wifi["Wi-Fi 函数组"] --> Assistant
   Assistant --> Machine["状态机函数组"]
@@ -34,6 +38,7 @@ flowchart LR
   Tts --> Audio
   Cloud --> Assistant
   App["DashboardApp_Tick"] --> Assistant
+  UiTask --> App
   Assistant --> Snapshot["BikeMbAiSnapshot"]
   Snapshot --> UiMap["AI UI 映射函数组"]
   UiMap --> LVGL["Dashboard View / Pages"]
@@ -47,16 +52,28 @@ flowchart LR
 - `src/firmware/bikemb/platformio.ini`
 - `src/firmware/bikemb/src/ai/ai_config.h`
 
-| 入口 | 执行上下文 | 职责 |
-| --- | --- | --- |
-| `setup()` | Arduino 启动线程 | 初始化 Assistant、Wi-Fi、AI Button；启用 AudioSession 时再初始化 codec/I2S。 |
-| `loop()` | Arduino 主循环 | 每轮调用 `BikeMbAiButton_Tick(now)`；继续承担 LVGL tick、Dashboard 更新和渲染。 |
-| `BikeMbAiAssistant_Init()` | `setup()` | 创建 AI 命令队列、CloudWorker 和 `bikemb_ai` task。 |
-| `BikeMbWifiService_Init()` | `setup()` | 创建 `bikemb_wifi` task；不阻塞等待联网。 |
-| `BikeMbAiButton_Init()` | `setup()` | 配置 GPIO0 输入并清零按键 reducer。 |
-| `BikeMbAudioSession_Init()` | `setup()` | 在音频开关开启时初始化 ES8311、ES7210 和 I2S0。 |
+启动入口分两条：
 
-真实云环境同时定义：
+```mermaid
+flowchart TB
+  subgraph Arduino["Arduino 回归路径"]
+    Setup["setup()"] --> A1["Assistant / Wi-Fi / AI Button init"]
+    Setup --> A2["AudioSession init when enabled"]
+    Loop["loop()"] --> A3["AI button tick + LVGL + Dashboard"]
+  end
+
+  subgraph IDF["ESP-IDF 目标路径"]
+    AppMain["app_main()"] --> RuntimeInit["BikeRuntime_Init()"]
+    RuntimeInit --> RuntimeStart["BikeRuntime_Start()"]
+    RuntimeStart --> Ui["bike_ui / Core 1"]
+    RuntimeStart --> Runtime["bike_runtime / Core 0"]
+    RuntimeStart --> Services["AudioSession + AI + Wi-Fi + Button"]
+  end
+```
+
+关键入口：`BikeMbAiAssistant_Init()` 创建 `bikemb_ai` 和 CloudWorker；`BikeMbWifiService_Init()` 创建 `bikemb_wifi`；`BikeMbAiButton_Init()` 配置 GPIO0；`BikeMbAudioSession_Init()` 初始化 ES8311、ES7210 和 I2S0。
+
+Arduino 真实云环境同时定义：
 
 ```text
 BIKE_MB_ENABLE_AI_ASSISTANT=1
@@ -66,6 +83,16 @@ BIKE_MB_AI_TLS_INSECURE_TEST_ONLY=1
 
 因此它是开发验证环境，不是可发布的安全配置。
 
+ESP-IDF 云端语音环境通过 CMake 参数启用：
+
+```text
+BIKE_MB_USE_ESPIDF_RUNTIME=1
+BIKE_MB_IDF_ENABLE_AI_ASSISTANT=ON
+BIKE_MB_IDF_ENABLE_AUDIO_SESSION=ON
+```
+
+该环境使用 `partitions_idf_16m.csv` 的 4MB factory app 分区，并通过 ESP-IDF 证书 bundle 配置 `esp_http_client`。
+
 ## 2. BOOT/AI 按键函数组
 
 主要文件：`src/firmware/bikemb/src/input/ai_button.*`、`ai_button_logic.*`
@@ -74,8 +101,8 @@ BIKE_MB_AI_TLS_INSECURE_TEST_ONLY=1
 
 | 函数 | 调用方 | 行为 |
 | --- | --- | --- |
-| `BikeMbAiButton_Init()` | `setup()` | 初始化 reducer，并把 GPIO0 配置为上拉输入。 |
-| `BikeMbAiButton_Tick(nowMs)` | `loop()` | 读取按键，产生稳定的按下/松开事件；按下时先显示 AI 页面，再通知 Assistant。 |
+| `BikeMbAiButton_Init()` | `setup()` / `BikeRuntime_Start()` | 初始化 reducer，并把 GPIO0 配置为上拉输入。 |
+| `BikeMbAiButton_Tick(nowMs)` | Arduino `loop()` / ESP-IDF `bike_runtime` | 读取按键，产生稳定的按下/松开事件；按下时先切换 AI 页面，再通知 Assistant。ESP-IDF 下页面切换通过 `ShowAiPage` runtime event 交给 `bike_ui`。 |
 | `BikeMbAiButtonLogic_Init(logic)` | Button adapter / host test | 清零纯逻辑状态。 |
 | `BikeMbAiButtonLogic_Update(logic, nowMs, rawPressed)` | Button adapter / host test | 返回 `NONE/PRESSED/RELEASED`，不访问硬件。 |
 
@@ -173,15 +200,30 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 | `BikeMbCloudWorker_SetCaptureClip(...)` | 接管当前录音 clip 的 PSRAM 所有权。 |
 | `cloudTask(...)` | 串行执行 stage；仅在 request 仍有效时回调 Assistant。 |
 
-`CancelBefore` 能阻止旧结果生效，但不能主动关闭已经阻塞在 `WiFiClientSecure` 中的请求。单次连接/读取超时为 `15000 ms`；新的 cloud job 仍需等待当前 stage 返回。
+`CancelBefore` 能阻止旧结果生效，但不能主动关闭已经阻塞中的 HTTPS 请求。Arduino 路径可能阻塞在 `WiFiClientSecure`，ESP-IDF 路径可能阻塞在 `esp_http_client_read/write`；单次连接/读取超时为 `15000 ms`，新的 cloud job 仍需等待当前 stage 返回。
 
-### HTTP 辅助函数
+### HTTP 路径图
 
-- `writeHttpJsonRequest(...)`：解析 HTTPS URL、建立 TLS、发送鉴权头和流式 JSON body。
-- `readStatusAndHeaders(...)`：读取 HTTP 状态与 headers。
-- `readJsonBody(...)`：把 JSON 响应限制在 `4096 bytes`。
-- `readSseBody(...)`：使用 `12 KiB` PSRAM line buffer 解析 TTS SSE。
-- `extractJsonString(...)`：当前轻量响应字段提取器，不是通用 JSON parser。
+```mermaid
+flowchart TB
+  Job["Cloud job<br/>STT / LLM / TTS"] --> Platform{"runtime"}
+
+  Platform -->|"Arduino"| AHTTP["WiFiClientSecure"]
+  AHTTP --> AReq["writeHttpJsonRequest"]
+  AReq --> ARead["readStatusAndHeaders / readJsonBody / readSseBody"]
+
+  Platform -->|"ESP-IDF"| IHTTP["esp_http_client"]
+  IHTTP --> IReq["postIdfJson<br/>known content-length + streamed body"]
+  IReq --> IRead["bounded JSON read<br/>or SSE/Base64 PCM"]
+
+  ARead --> Provider["Qwen ASR / Qwen Chat / CosyVoice"]
+  IRead --> Provider
+  Provider --> Result{"stage result"}
+  Result -->|"STT/LLM"| Ai["bikemb_ai callback<br/>request_id checked"]
+  Result -->|"TTS"| Audio["AudioSession AI_PLAYBACK<br/>2x gain + stereo I2S"]
+```
+
+当前 `extractJsonString(...)` / `extractJsonStringIdf(...)` 只是轻量字段提取器，不是通用 JSON parser。取消只会失效旧 `request_id`，不能主动中断已经阻塞的 HTTPS 读写。
 
 ## 7. Provider Adapter 函数组
 
@@ -197,9 +239,9 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 
 文件：`qwen_chat_adapter.*`
 
-- `BikeMbQwenChat_WriteRequestJson(...)` 生成 `qwen-plus` 请求，system prompt 要求中文、单句、30 个汉字以内。
-- `BikeMbQwenChat_CopyBoundedAnswer(...)` 把回答限制到 `384 bytes`。
-- `postQwenChat(...)` 是当前 CloudWorker 实际调用的 LLM 路径。
+- `BikeMbQwenChat_WriteRequestJson(...)` 生成 `qwen-plus` 请求，system prompt 要求中文短句。
+- `BikeMbQwenChat_CopyBoundedAnswer(...)` 把回答限制到 `192 bytes`，并做 UTF-8 安全截断。
+- `postQwenChat(...)` / `postQwenChatIdf(...)` 是当前 CloudWorker 实际调用的 LLM 路径。
 
 ### DeepSeek
 
@@ -214,7 +256,7 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 
 - `BikeMbCosyVoice_WriteRequestJson(...)` 生成 `cosyvoice-v3-flash` SSE 请求。
 - `BikeMbCosyVoice_HandleSseLineWithStream(...)` 跨 SSE 行连续解码 Base64 PCM。
-- CloudWorker 最多重试 2 次，先把 PCM 存入最多 `320000` 个 `int16_t` 的 PSRAM 缓冲，再播放最多 `96000` 个 mono sample。
+- CloudWorker 最多重试 2 次，先把 PCM 存入最多 `320000` 个 `int16_t` 的 PSRAM 缓冲，再播放最多 `96000` 个 mono sample；当前播放前使用 2x 饱和增益改善音量。
 
 这意味着当前 TTS 是“完整响应缓冲后播放”，不是边收边播。
 
@@ -229,7 +271,7 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 | `BikeMbWifiService_Init()` | 创建 `bikemb_wifi` task。 |
 | `wifiTask(...)` | 每秒轮询；断开时每 10 秒重试，并把状态发布给 Assistant。 |
 
-凭据只从 Git 忽略的 `include/ai_secrets.local.h` 读取。联网成功日志包含 IP、RSSI、DNS 和 TCP 探测结果，不打印 Wi-Fi 密码或 token。
+凭据只从 Git 忽略的 `include/ai_secrets.local.h` 读取。Arduino 联网成功日志包含 IP、RSSI、DNS 和 TCP 探测结果；ESP-IDF 日志发布 online/offline 状态。两条路径都不打印 Wi-Fi 密码或 token。
 
 ## 9. UI 快照函数组
 
@@ -237,7 +279,7 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 
 | 函数 | 职责 |
 | --- | --- |
-| `DashboardApp_ShowAiPage()` | 切换到独立 AI 页面。按键稳定按下时调用。 |
+| `DashboardApp_ShowAiPage()` | 切换到独立 AI 页面。Arduino 路径由按键直接调用；ESP-IDF 路径由 `bike_ui` 消费 `ShowAiPage` event 后调用。 |
 | `DashboardApp_Tick(...)` | 每约 33 ms 复制 AI snapshot，并交给 UI mapper。 |
 | `BikeMbAiUiState_FromSnapshot(...)` | 把业务状态映射为 Offline/Idle/Listening/Sending/Thinking/Speaking/Music/Error。 |
 | `DashboardView_Update(...)` | 只在 UI 上下文更新 LVGL。 |
@@ -248,16 +290,16 @@ CloudWorker 获取 `AI_PLAYBACK` owner，调用 `BikeMbAudioSession_WriteStereoP
 
 ```mermaid
 sequenceDiagram
-  participant Loop as Arduino loop
+  participant Loop as Arduino loop / bike_runtime
   participant Btn as AI Button
   participant Ai as bikemb_ai
   participant Audio as AudioSession
   participant Cloud as bikemb_cloud
   participant API as DashScope
-  participant UI as Dashboard/LVGL
+  participant UI as Dashboard/LVGL owner
 
   Loop->>Btn: Tick(now), read GPIO0
-  Btn->>UI: ShowAiPage()
+  Btn->>UI: ShowAiPage() direct or runtime event
   Btn->>Ai: BUTTON_PRESSED
   Ai->>Audio: StartCapture(requestId, 10 s)
   loop while held
@@ -284,7 +326,7 @@ sequenceDiagram
 ## 11. 当前限制和开发注意事项
 
 1. 默认固件不启用 AI；真实链路仍是专用测试环境。
-2. 真实环境使用 `BIKE_MB_AI_TLS_INSECURE_TEST_ONLY=1`。产品启用前必须配置 CA 校验并删除该开关。
+2. Arduino 真实环境使用 `BIKE_MB_AI_TLS_INSECURE_TEST_ONLY=1`。ESP-IDF 真实环境使用 ESP-IDF certificate bundle。产品启用前必须统一证书校验策略并删除测试专用 insecure 开关。
 3. CloudWorker 当前使用 Qwen Chat，不是产品文档原定的 DeepSeek；切换时应只改 worker 选择，不改 Assistant 状态机。
 4. `logCloudText(...)` 会向串口打印最多 160 bytes 的转写和回答，和隐私目标不一致，产品化前必须移除或改成显式诊断开关。
 5. 取消只失效旧 request；无法立即中断正在进行的 HTTPS 读写，且单 CloudWorker 会推迟新请求。
@@ -292,7 +334,7 @@ sequenceDiagram
 7. `runRealStage(TTS)` 在 PCM 播放结束后才返回，Assistant 随后连续收到 `TTS_STARTED` 和 `PLAYBACK_DONE`；因此 Speaking UI 与实际发声时段尚未对齐。
 8. UI 的取消/重试/停止是展示语义，尚无触摸命令绑定。
 9. 音乐和点歌未实现；现有 Music 状态与 owner 只是接口预留。
-10. ESP-IDF `app_main()` 路径尚未接入 AI、Arduino Wi-Fi 和 Arduino `ESP_I2S` 实现。
+10. ESP-IDF 云端语音基础录音和回复已由用户确认；仍缺取消、断网/超时异常、长稳资源基线和 audio underrun 验收。
 
 ## 12. 验证入口
 
@@ -301,6 +343,9 @@ sequenceDiagram
 - `tools/tests/ai_button_logic_test.cpp`：3 秒保护、释放解锁和消抖。
 - `tools/tests/audio_session_core_test.cpp`：音频 owner 与 request ID。
 - `tools/tests/test_cloud_worker_real_contract.py`：真实 CloudWorker 结构与 provider 路径。
+- `tools/tests/test_idf_cloud_transport_contract.py`：ESP-IDF `esp_http_client` ASR/Chat/CosyVoice transport。
+- `tools/tests/test_idf_audio_session_contract.py`：ESP-IDF `driver/i2s_std.h` AudioSession 初始化边界。
+- `tools/tests/test_idf_wifi_service_contract.py`：ESP-IDF Wi-Fi service 边界。
 - `tools/tests/test_audio_capture_contract.py`：有界录音和 downmix。
 - `tools/tests/test_cosyvoice_tts_contract.py`：SSE/Base64 PCM。
 - `tools/tests/test_dashboard_ai_ui_contract.py`：UI snapshot 边界和 AI 页面切换。

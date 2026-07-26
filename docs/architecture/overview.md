@@ -2,6 +2,10 @@
 
 本文维护 BikeMB 固件的系统架构视图。更细的代码地图仍保留在 `docs/software-architecture.md`。
 
+后续新增或更新架构图、任务表、资源预算表时，必须先按 `docs/architecture/architecture-documentation-requirements.md` 的要求验收；缺少实测数据时标记为“待确认”或“建议值”，不能写成现状。
+
+规范化系统架构文档入口：`docs/architecture/system-architecture.md`。
+
 ## 架构目标
 
 - 第一阶段先完成可上板、可扩展、可持续迭代的基础自行车码表。
@@ -30,13 +34,13 @@ P2 AI 助手初版在该边界之外独立演进，当前已经形成实体键�
 当前固件保留两条路径：
 
 - 默认路径：`PlatformIO + Arduino`，入口为 `setup()` / `loop()`。
-- 迁移路径：`PlatformIO + ESP-IDF`，已有 Runtime/Event/Service 骨架，AudioSession codec/I2S 初始化已完成第一轮上板验证，但还不是完整语音闭环的主验证路径。
+- 迁移路径：`PlatformIO + ESP-IDF`，已有 Runtime/Event/Service 双核模型，AudioSession、Wi-Fi 和云端语音 transport 已迁入主要代码路径，并完成基础录音/回复板级确认。
 
-默认路径已经承载当前 LVGL dashboard、触摸、音频自检、档位播报和直接语音识别测试。ESP-IDF 路径用于逐步建立更清晰的任务、事件和服务边界。
+默认路径仍承载当前 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 Arduino 版 AI 回归。ESP-IDF 路径用于建立产品化任务、事件和服务边界，是正式音乐能力前的目标运行模型。
 
-AI 助手初版继续使用 Arduino 路径和 FreeRTOS task，不以该功能为理由迁移整个固件到 ESP-IDF。LVGL 仍只在现有主循环中访问；网络请求和 TTS 播放在 `bikemb_cloud` 中执行，录音由 `bikemb_ai` 轮询 `AudioSession` 完成。
+AI 助手初版现在同时保留 Arduino 回归环境和 ESP-IDF 云端语音验收环境。ESP-IDF 环境中，LVGL 只由 Core 1 的 `bike_ui` 访问；Core 0 的 `bike_runtime` 负责 tick、服务启动和 AI button 轮询；`bikemb_ai`、`bikemb_cloud`、`bikemb_wifi` 固定在 Core 0。网络请求和 TTS 播放在 `bikemb_cloud` 中执行，录音由 `bikemb_ai` 轮询 `AudioSession` 完成。
 
-下一阶段继续完成 ESP-IDF 双核迁移。代码层第一阶段已经完成：`bike_runtime` 固定在 Core 0，`bike_ui` 固定在 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定在 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task；AudioSession codec/I2S 初始化已在 ESP-IDF 上到达 `session ready`，Qwen ASR/Qwen Chat 的 ESP-IDF HTTPS JSON transport 已能构建。根据 ADR-0004，这是正式 `MusicService`、产品音乐流和点歌开发的强制前置条件；迁移完成前只允许隔离的 decoder/stream spike、接口和 mock 工作。
+下一阶段继续关闭 ADR-0004。当前已经完成：`bike_runtime` 固定在 Core 0，`bike_ui` 固定在 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定在 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task；AudioSession codec/I2S 使用 ESP-IDF `driver/i2s_std.h`；Wi-Fi 使用 `esp_wifi` / `esp_netif` / `nvs_flash`；Qwen ASR、Qwen Chat 和 CosyVoice SSE/TTS 使用 `esp_http_client`；2026-07-26 用户确认 ESP-IDF 云端语音固件基础录音和回复正常。ADR-0004 仍需取消、异常路径、长稳资源基线和 audio underrun 验收；关闭前只允许隔离的 decoder/stream spike、接口和 mock 工作，不能接入正式 `MusicService` 或点歌。
 
 ROM Bootloader、Flash 二级 Bootloader、应用 `call_start_cpu0/call_start_cpu1` 和 FreeRTOS 两核调度器的完整启动顺序见 `docs/software-architecture.md` 的“Bootloader 与双核启动链路”章节。
 
@@ -79,7 +83,7 @@ flowchart LR
 
 ### 关键边界
 
-- `audio_session` 是 Arduino 共享音频环境中 I2S0、ES7210 和 ES8311 的唯一运行时所有者。Audio Self Test 和 Audio Prompts 已迁入；Voice Commands 迁移前继续保持编译期互斥。
+- `audio_session` 是共享音频环境中 I2S0、ES7210 和 ES8311 的唯一运行时所有者。Arduino 路径使用 `ESP_I2S`；ESP-IDF 路径使用 `driver/i2s_std.h`。Audio Self Test 和 Audio Prompts 已迁入；Voice Commands 迁移前继续保持编译期互斥。
 - `ai_assistant` 只负责编排状态和超时，不直接访问 I2S、Wi-Fi、HTTP 或 LVGL 对象。
 - provider adapter 负责生成供应商请求。当前 CloudWorker 调用百炼 Qwen ASR、Qwen Chat 和 CosyVoice；上层状态机不依赖具体供应商字段。
 - `music_service`、MP3 player 和 `MusicCatalogProvider` 仍是目标边界，当前源码只有 Music 状态与音频 owner 预留。
@@ -89,26 +93,51 @@ flowchart LR
 
 语音问答采用 V1 分阶段直连流程：
 
-1. 上电满 3 秒且 BOOT 键已连续释放 50 ms 后，复用的 BOOT/AI 键才解锁；随后按下时，AI 编排器停止当前音乐并请求录音会话。
-2. 音频会话把 `16 kHz`、`16-bit`、mono PCM 写入 PSRAM，最长 `10` 秒。
-3. 按键松开后，Qwen ASR adapter 流式生成 Base64 WAV JSON，通过 HTTPS 发送给百炼。
-4. 转写文本发送给 Qwen Chat，回答限制为适合语音播报的中文短句。DeepSeek adapter 当前不在运行链路中。
-5. 回答发送给 TTS provider，优先请求 `16 kHz` mono PCM/WAV。
-6. CloudWorker 解码 SSE 中的 PCM，完整缓冲到 PSRAM 后分块写入音频会话；播放结束立即释放，不写入 Flash。
-7. 每次交互使用递增 `request_id`；取消后到达的旧回调必须被丢弃。
+```mermaid
+flowchart LR
+  Boot["BOOT/AI 键<br/>3 s guard + release-to-arm"] --> Rec["AudioSession<br/>16 kHz mono capture<br/>max 10 s"]
+  Rec --> Clip["PSRAM clip<br/>request_id"]
+  Clip --> ASR["Qwen ASR<br/>Base64 WAV JSON"]
+  ASR --> Chat["Qwen Chat<br/>短中文回答"]
+  Chat --> TTS["CosyVoice SSE<br/>Base64 PCM"]
+  TTS --> Pcm["PSRAM PCM buffer<br/>2x gain"]
+  Pcm --> Speaker["AudioSession<br/>stereo I2S playback"]
+  Rec -.cancel/stale.-> Drop["旧 request 丢弃"]
+  ASR -.cancel/stale.-> Drop
+  Chat -.cancel/stale.-> Drop
+  TTS -.cancel/stale.-> Drop
+```
+
+关键约束：录音和 TTS PCM 不通过队列复制整段数据，只传递句柄和小事件；每次交互使用递增 `request_id`，取消后到达的旧回调必须丢弃。
 
 ## 任务和通信模型
 
-| 执行上下文 | 职责 | 禁止事项 |
-| --- | --- | --- |
-| Arduino `loop()` | LVGL tick、Dashboard 更新、读取 AI snapshot | 阻塞式 HTTP、音频解码、等待队列 |
-| `bikemb_ai` task | AI 状态机、命令、阶段超时、取消和 snapshot | 阻塞式 HTTP、直接访问 LVGL/I2S |
-| `bikemb_cloud` task | 串行执行当前 request 的 STT、Qwen Chat、TTS 网络工作和 TTS PCM 播放 | 修改 AI 状态、访问 LVGL |
-| `AudioSession`（无独立 task） | codec/I2S0 所有权、录音 clip、PCM 写入 | 发起云请求、修改页面 |
-| `bikemb_wifi` task | 每秒轮询连接状态，断开时每 10 秒重试 | 修改页面、执行 provider 请求 |
-| Arduino Wi-Fi/协议栈 task | Wi-Fi 和 TCP/TLS 底层处理 | 承担产品状态机 |
+```mermaid
+flowchart TB
+  subgraph C0["Core 0 / runtime side"]
+    RT["bike_runtime<br/>tick + service boundary"]
+    AI["bikemb_ai<br/>state + snapshot"]
+    CLOUD["bikemb_cloud<br/>blocking STT/LLM/TTS"]
+    WIFI["bikemb_wifi<br/>connect/retry status"]
+    AUDIO["AudioSession<br/>I2S owner, no task"]
+  end
 
-AI 命令队列只传递小型值对象。录音通过 PSRAM clip 句柄移交 CloudWorker，不通过事件队列复制整段音频。`bikemb_ai` 不等待 provider；`bikemb_cloud` 完成一个阶段后携带 `request_id` 回报事件。取消会立即更新有效 request ID 并停止本地音频，旧网络结果无权修改新状态；但当前实现不能主动关闭已经阻塞的 HTTPS 请求，后续 cloud job 仍需等待当前 stage 返回。初版不固定 task 到特定 CPU core。
+  subgraph C1["Core 1 / UI side"]
+    UI["bike_ui<br/>LVGL + Dashboard"]
+  end
+
+  RT -->|"DashboardTick / ShowAiPage"| UI
+  WIFI -->|"connected/offline event"| AI
+  AI -->|"stage job + clip handle"| CLOUD
+  CLOUD -->|"tagged request result"| AI
+  AI -->|"capture / release"| AUDIO
+  CLOUD -->|"TTS PCM write"| AUDIO
+  UI -->|"snapshot copy only"| AI
+```
+
+禁止方向：Core 0 后台 task 不访问 LVGL；`bike_ui` 不执行阻塞 HTTP；AudioSession 不发起云请求；CloudWorker 不直接修改 AI 状态。
+
+AI 命令队列只传递小型值对象。录音通过 PSRAM clip 句柄移交 CloudWorker，不通过事件队列复制整段音频。`bikemb_ai` 不等待 provider；`bikemb_cloud` 完成一个阶段后携带 `request_id` 回报事件。取消会立即更新有效 request ID 并停止本地音频，旧网络结果无权修改新状态；但当前实现不能主动关闭已经阻塞的 HTTPS 请求，后续 cloud job 仍需等待当前 stage 返回。ESP-IDF 路径中产品 worker 固定 Core 0，UI 固定 Core 1。
 
 ## 内存与性能预算
 
@@ -124,7 +153,7 @@ AI 命令队列只传递小型值对象。录音通过 PSRAM clip 句柄移交 C
 | Cloud task stack | `<= 12 KiB` | TLS/JSON 工作不得放到 AI control task stack |
 | Audio task stack | `<= 8 KiB` | 以 FreeRTOS high-water mark 验证 |
 | STT 文本 | `<= 512 bytes UTF-8` | 超限截断并返回明确错误 |
-| LLM 回答 | `<= 384 bytes UTF-8` | 当前 Qwen prompt 要求中文单句、30 个汉字以内 |
+| LLM 回答 | `<= 192 bytes UTF-8` | 当前 Qwen prompt 要求中文短句，并使用 UTF-8 安全截断 |
 | UI 主循环附加工作 | 单次 `<= 1 ms` | 只复制 snapshot，不解析 JSON |
 | 松键到开始回复 | 目标 `<= 8 s` | 当前状态机云阶段 deadline 为 `60 s`，单次 HTTPS 读超时 `15 s` |
 | 音乐建连 | `<= 10 s` | 超时停止并释放播放会话 |

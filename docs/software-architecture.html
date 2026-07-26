@@ -6,19 +6,19 @@
   <title>BikeMB 固件架构说明</title>
   <style>
     :root {
-      --bg: #07100f;
-      --bg-2: #0c1714;
-      --panel: rgba(18, 31, 28, .86);
-      --panel-2: rgba(9, 18, 17, .94);
-      --paper: #f4ead7;
-      --text: #eef8ed;
-      --muted: #9aaca5;
-      --line: rgba(151, 184, 164, .23);
-      --cyan: #2de2d0;
-      --lime: #c8f35d;
-      --amber: #f0ae49;
-      --red: #ff6f61;
-      --shadow: 0 28px 80px rgba(0, 0, 0, .42);
+      --bg: #f5f8fb;
+      --bg-2: #eaf1f6;
+      --panel: rgba(255, 255, 255, .94);
+      --panel-2: rgba(247, 250, 252, .98);
+      --paper: #102a43;
+      --text: #1c2b36;
+      --muted: #5c6f7b;
+      --line: rgba(22, 56, 74, .14);
+      --cyan: #087f8c;
+      --lime: #3b7d2a;
+      --amber: #b26300;
+      --red: #c24135;
+      --shadow: 0 20px 55px rgba(24, 50, 68, .12);
       --radius: 22px;
     }
 
@@ -32,9 +32,7 @@
       margin: 0;
       color: var(--text);
       background:
-        radial-gradient(circle at 20% -10%, rgba(45, 226, 208, .22), transparent 34rem),
-        radial-gradient(circle at 90% 8%, rgba(200, 243, 93, .14), transparent 32rem),
-        linear-gradient(135deg, #050807 0%, var(--bg) 40%, #11130d 100%);
+        linear-gradient(180deg, #ffffff 0%, var(--bg) 38%, #eef4f7 100%);
       font-family: "Noto Serif SC", "LXGW WenKai", "Microsoft YaHei", serif;
       line-height: 1.68;
     }
@@ -44,12 +42,12 @@
       position: fixed;
       inset: 0;
       pointer-events: none;
-      opacity: .24;
+      opacity: .42;
       background-image:
-        linear-gradient(rgba(244, 234, 215, .06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(244, 234, 215, .05) 1px, transparent 1px);
+        linear-gradient(rgba(8, 127, 140, .05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(8, 127, 140, .05) 1px, transparent 1px);
       background-size: 44px 44px;
-      mask-image: radial-gradient(circle at 50% 10%, black, transparent 78%);
+      mask-image: linear-gradient(180deg, black, transparent 86%);
     }
 
     a {
@@ -59,12 +57,13 @@
 
     code {
       color: var(--lime);
-      background: rgba(200, 243, 93, .09);
-      border: 1px solid rgba(200, 243, 93, .18);
+      background: rgba(59, 125, 42, .08);
+      border: 1px solid rgba(59, 125, 42, .18);
       border-radius: 7px;
       padding: .12rem .38rem;
       font-family: "Cascadia Code", "Consolas", monospace;
       font-size: .92em;
+      overflow-wrap: anywhere;
     }
 
     pre {
@@ -72,16 +71,16 @@
       margin: 16px 0 0;
       padding: 18px;
       border-radius: 18px;
-      border: 1px solid rgba(45, 226, 208, .22);
-      background: #06100f;
-      box-shadow: inset 0 0 32px rgba(45, 226, 208, .05);
+      border: 1px solid rgba(8, 127, 140, .18);
+      background: #f8fbfc;
+      box-shadow: inset 0 0 28px rgba(8, 127, 140, .04);
     }
 
     pre code {
       padding: 0;
       border: 0;
       background: transparent;
-      color: #d7ffe8;
+      color: #17384a;
       white-space: pre;
     }
 
@@ -102,7 +101,7 @@
       padding: 20px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(18, 31, 28, .92), rgba(6, 13, 12, .86));
+      background: linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(245, 250, 252, .92));
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
     }
@@ -125,7 +124,7 @@
       letter-spacing: -.08em;
       background:
         conic-gradient(from 210deg, var(--cyan), var(--lime), var(--amber), var(--cyan));
-      box-shadow: 0 0 44px rgba(45, 226, 208, .28);
+      box-shadow: 0 10px 30px rgba(8, 127, 140, .18);
     }
 
     .brand h1 {
@@ -150,14 +149,14 @@
     .nav a {
       padding: 8px 10px;
       border-radius: 12px;
-      color: #dcece6;
+      color: #2d4654;
       border: 1px solid transparent;
     }
 
     .nav a:hover {
       color: var(--lime);
-      background: rgba(200, 243, 93, .08);
-      border-color: rgba(200, 243, 93, .22);
+      background: rgba(59, 125, 42, .08);
+      border-color: rgba(59, 125, 42, .2);
     }
 
     main {
@@ -170,26 +169,14 @@
       border-radius: 32px;
       padding: 44px;
       background:
-        linear-gradient(145deg, rgba(16, 32, 29, .96), rgba(9, 17, 15, .88)),
-        radial-gradient(circle at 78% 28%, rgba(45, 226, 208, .25), transparent 22rem);
+        linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(235, 246, 249, .9));
       box-shadow: var(--shadow);
       position: relative;
       overflow: hidden;
     }
 
     .hero::after {
-      content: "";
-      position: absolute;
-      width: 360px;
-      height: 360px;
-      right: -90px;
-      top: -90px;
-      border-radius: 50%;
-      border: 1px solid rgba(45, 226, 208, .22);
-      background:
-        radial-gradient(circle, transparent 34%, rgba(45, 226, 208, .16) 35%, transparent 36%),
-        repeating-conic-gradient(from 20deg, rgba(200, 243, 93, .22) 0deg 5deg, transparent 5deg 13deg);
-      opacity: .75;
+      display: none;
     }
 
     .eyebrow {
@@ -197,10 +184,10 @@
       gap: 8px;
       align-items: center;
       padding: 5px 12px;
-      border: 1px solid rgba(45, 226, 208, .28);
+      border: 1px solid rgba(8, 127, 140, .24);
       border-radius: 999px;
       color: var(--cyan);
-      background: rgba(45, 226, 208, .07);
+      background: rgba(8, 127, 140, .07);
       font-size: 13px;
     }
 
@@ -218,7 +205,7 @@
       position: relative;
       z-index: 1;
       max-width: 760px;
-      color: #c3d6cf;
+      color: #4f6470;
       font-size: 18px;
       margin: 22px 0 0;
     }
@@ -235,7 +222,7 @@
     .stat {
       padding: 14px;
       border-radius: 16px;
-      background: rgba(4, 12, 11, .62);
+      background: rgba(255, 255, 255, .72);
       border: 1px solid var(--line);
     }
 
@@ -257,7 +244,7 @@
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: linear-gradient(180deg, var(--panel), var(--panel-2));
-      box-shadow: 0 18px 60px rgba(0, 0, 0, .24);
+      box-shadow: 0 18px 45px rgba(24, 50, 68, .08);
     }
 
     .section-head {
@@ -296,7 +283,7 @@
       padding: 18px;
       border: 1px solid var(--line);
       border-radius: 18px;
-      background: rgba(5, 12, 11, .52);
+      background: rgba(255, 255, 255, .72);
     }
 
     .card h3 {
@@ -306,7 +293,7 @@
     }
 
     .card p, .card li {
-      color: #bfcec8;
+      color: #4f6470;
       margin: 0;
     }
 
@@ -322,9 +309,9 @@
       display: grid;
       gap: 4px;
       padding: 14px;
-      border: 1px solid rgba(45, 226, 208, .2);
+      border: 1px solid rgba(8, 127, 140, .18);
       border-radius: 18px;
-      background: rgba(4, 12, 11, .54);
+      background: rgba(255, 255, 255, .72);
     }
 
     .partition-stack h3 {
@@ -340,21 +327,21 @@
       align-items: center;
       min-height: var(--h);
       padding: 8px 10px;
-      border: 1px solid rgba(244, 234, 215, .11);
+      border: 1px solid rgba(22, 56, 74, .12);
       border-radius: 12px;
-      background: linear-gradient(90deg, rgba(45, 226, 208, .12), rgba(200, 243, 93, .05));
+      background: linear-gradient(90deg, rgba(8, 127, 140, .1), rgba(59, 125, 42, .05));
     }
 
     .partition-block.app {
-      background: linear-gradient(90deg, rgba(200, 243, 93, .18), rgba(200, 243, 93, .05));
+      background: linear-gradient(90deg, rgba(59, 125, 42, .14), rgba(59, 125, 42, .04));
     }
 
     .partition-block.fs {
-      background: linear-gradient(90deg, rgba(240, 174, 73, .18), rgba(240, 174, 73, .05));
+      background: linear-gradient(90deg, rgba(178, 99, 0, .14), rgba(178, 99, 0, .04));
     }
 
     .partition-block.model {
-      background: linear-gradient(90deg, rgba(255, 111, 97, .2), rgba(255, 111, 97, .05));
+      background: linear-gradient(90deg, rgba(194, 65, 53, .14), rgba(194, 65, 53, .04));
     }
 
     .partition-addr {
@@ -389,8 +376,8 @@
       position: relative;
       padding: 16px;
       border-radius: 18px;
-      border: 1px solid rgba(45, 226, 208, .26);
-      background: linear-gradient(160deg, rgba(45, 226, 208, .09), rgba(5, 12, 11, .76));
+      border: 1px solid rgba(8, 127, 140, .22);
+      background: linear-gradient(160deg, rgba(8, 127, 140, .08), rgba(255, 255, 255, .76));
     }
 
     .node:not(:last-child)::after {
@@ -403,7 +390,7 @@
       display: grid;
       place-items: center;
       border-radius: 50%;
-      color: #07100f;
+      color: #ffffff;
       background: var(--lime);
       font-weight: 900;
       z-index: 2;
@@ -420,14 +407,104 @@
       font-size: 13px;
     }
 
+    .diagram {
+      margin-top: 14px;
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid rgba(8, 127, 140, .18);
+      background: rgba(255, 255, 255, .76);
+      padding: 12px;
+    }
+
+    .diagram svg {
+      display: block;
+      width: 100%;
+      min-width: 820px;
+      height: auto;
+    }
+
+    .diagram .box,
+    .diagram .lane {
+      fill: rgba(255, 255, 255, .96);
+      stroke: rgba(8, 127, 140, .58);
+      stroke-width: 2;
+    }
+
+    .diagram .box-done {
+      fill: rgba(230, 246, 230, .96);
+      stroke: rgba(59, 125, 42, .72);
+    }
+
+    .diagram .box-warn {
+      fill: rgba(255, 247, 229, .98);
+      stroke: rgba(178, 99, 0, .72);
+    }
+
+    .diagram .box-block {
+      fill: rgba(255, 238, 236, .98);
+      stroke: rgba(194, 65, 53, .72);
+    }
+
+    .diagram .lane {
+      fill: rgba(244, 249, 251, .92);
+      stroke: rgba(8, 127, 140, .18);
+    }
+
+    .diagram text {
+      fill: var(--text);
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .diagram .title {
+      fill: var(--paper);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .diagram .muted {
+      fill: var(--muted);
+      font-size: 12px;
+    }
+
+    .diagram .label {
+      fill: var(--lime);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .diagram line,
+    .diagram path {
+      stroke: rgba(59, 125, 42, .78);
+      stroke-width: 2;
+      fill: none;
+    }
+
+    .diagram .soft-line {
+      stroke: rgba(8, 127, 140, .58);
+    }
+
     table {
       width: 100%;
+      max-width: 100%;
+      display: block;
+      overflow-x: auto;
       border-collapse: separate;
       border-spacing: 0;
-      overflow: hidden;
       border-radius: 18px;
       border: 1px solid var(--line);
-      background: rgba(5, 12, 11, .54);
+      background: rgba(255, 255, 255, .78);
+    }
+
+    table > tbody {
+      display: table;
+      width: 100%;
+      min-width: 760px;
+    }
+
+    table.thread-resource-table > tbody {
+      min-width: 1280px;
     }
 
     th, td {
@@ -435,12 +512,14 @@
       vertical-align: top;
       padding: 13px 15px;
       border-bottom: 1px solid var(--line);
+      overflow-wrap: anywhere;
+      word-break: normal;
     }
 
     th {
       color: var(--cyan);
       font-weight: 700;
-      background: rgba(45, 226, 208, .08);
+      background: rgba(8, 127, 140, .08);
     }
 
     tr:last-child td {
@@ -459,9 +538,9 @@
       gap: 6px;
       padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(240, 174, 73, .24);
+      border: 1px solid rgba(178, 99, 0, .24);
       color: var(--amber);
-      background: rgba(240, 174, 73, .08);
+      background: rgba(178, 99, 0, .08);
       font-size: 12px;
       margin: 2px 4px 2px 0;
       white-space: nowrap;
@@ -471,15 +550,15 @@
       margin-top: 16px;
       padding: 16px;
       border-radius: 18px;
-      border: 1px solid rgba(255, 111, 97, .28);
-      background: rgba(255, 111, 97, .08);
-      color: #ffd8d4;
+      border: 1px solid rgba(194, 65, 53, .24);
+      background: rgba(194, 65, 53, .07);
+      color: #6f2b25;
     }
 
     .callout.good {
-      border-color: rgba(200, 243, 93, .26);
-      background: rgba(200, 243, 93, .08);
-      color: #ecffd0;
+      border-color: rgba(59, 125, 42, .24);
+      background: rgba(59, 125, 42, .07);
+      color: #284f21;
     }
 
     .toc-tag {
@@ -583,7 +662,7 @@
       <section id="runtime">
         <div class="section-head">
           <h2>当前运行路径</h2>
-          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。Arduino 仍是当前最完整的板级验证路径；ESP-IDF 路径已经完成双核框架迁移第一阶段，但真实音频 codec/I2S、云 transport 和板级语音闭环仍在迁移中。</p>
+          <p>工程同时保留 Arduino 验证路径和 ESP-IDF 迁移路径。Arduino 仍是基础回归路径；ESP-IDF 路径已经承接双核运行模型、AudioSession、Wi-Fi 和云端语音 transport，用户已确认基础录音和回复正常。</p>
         </div>
         <div class="grid two">
           <article class="card">
@@ -592,7 +671,7 @@
           </article>
           <article class="card">
             <h3>迁移路径：ESP-IDF</h3>
-            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。当前已把 Runtime/UI/AI/Cloud/Wi-Fi 放入明确的 Core 0/Core 1 运行模型；真实音频 codec/I2S 和云 transport 仍需继续迁移验证。</p>
+            <p>入口在 <code>main.cpp</code> 的 <code>app_main()</code>。当前已把 Runtime/UI/AI/Cloud/Wi-Fi 放入明确的 Core 0/Core 1 运行模型；AudioSession 使用 ESP-IDF I2S，CloudWorker 使用 <code>esp_http_client</code> 调用 Qwen 和 CosyVoice。</p>
           </article>
         </div>
       </section>
@@ -602,12 +681,40 @@
           <h2>Bootloader 与双核启动链路</h2>
           <p>ESP32-S3 先从芯片 ROM 启动，再进入 Flash 二级 Bootloader。二级 Bootloader 只跳到应用 CPU0 入口；CPU1 由应用侧 CPU0 拉起。</p>
         </div>
-        <div class="flow">
-          <div class="node"><b>ROM Bootloader</b><span>CPU0 复位后执行；采样 GPIO0。正常 Flash boot 时加载二级 Bootloader，按住 BOOT 复位则进入 ROM 下载模式。</span></div>
-          <div class="node"><b>二级 Bootloader</b><span>读取分区表与 otadata，选择并校验 app0/app1，加载 RAM 段并映射 IROM/DROM。</span></div>
-          <div class="node"><b>应用 call_start_cpu0</b><span>Bootloader 读取应用 entry_addr 后跳转到这里，初始化 BSS、cache、PSRAM 和系统组件。</span></div>
-          <div class="node"><b>应用 call_start_cpu1</b><span>CPU0 设置 CPU1 boot address，复位、启用并解除 stall；CPU1 完成本核初始化后等待 CPU0。</span></div>
-          <div class="node"><b>FreeRTOS / app_main</b><span>CPU0 创建 main_task 并启动 scheduler，CPU1 再启动本核 scheduler；main_task 最终调用 app_main。</span></div>
+        <div class="diagram" aria-label="Bootloader 与双核启动链路图">
+          <svg viewBox="0 0 1120 260" role="img">
+            <defs>
+              <marker id="arrowBoot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="25" y="80" width="180" height="95" rx="12"></rect>
+            <text x="115" y="112" text-anchor="middle" class="title">ROM Bootloader</text>
+            <text x="115" y="136" text-anchor="middle" class="muted">CPU0 复位执行</text>
+            <text x="115" y="155" text-anchor="middle" class="muted">采样 GPIO0</text>
+            <line x1="205" y1="127" x2="245" y2="127" marker-end="url(#arrowBoot)"></line>
+            <rect class="box" x="250" y="80" width="180" height="95" rx="12"></rect>
+            <text x="340" y="112" text-anchor="middle" class="title">二级 Bootloader</text>
+            <text x="340" y="136" text-anchor="middle" class="muted">选 app0/app1</text>
+            <text x="340" y="155" text-anchor="middle" class="muted">校验并加载镜像</text>
+            <line x1="430" y1="127" x2="470" y2="127" marker-end="url(#arrowBoot)"></line>
+            <rect class="box" x="475" y="80" width="180" height="95" rx="12"></rect>
+            <text x="565" y="112" text-anchor="middle" class="title">call_start_cpu0</text>
+            <text x="565" y="136" text-anchor="middle" class="muted">应用 CPU0 入口</text>
+            <text x="565" y="155" text-anchor="middle" class="muted">BSS/cache/PSRAM</text>
+            <path d="M 655 112 L 705 75" marker-end="url(#arrowBoot)"></path>
+            <rect class="box" x="710" y="38" width="180" height="78" rx="12"></rect>
+            <text x="800" y="69" text-anchor="middle" class="title">call_start_cpu1</text>
+            <text x="800" y="91" text-anchor="middle" class="muted">CPU1 由 CPU0 拉起</text>
+            <path d="M 655 146 L 705 183" marker-end="url(#arrowBoot)"></path>
+            <rect class="box box-done" x="710" y="160" width="180" height="78" rx="12"></rect>
+            <text x="800" y="191" text-anchor="middle" class="title">FreeRTOS</text>
+            <text x="800" y="213" text-anchor="middle" class="muted">双核 scheduler</text>
+            <line x1="890" y1="199" x2="930" y2="199" marker-end="url(#arrowBoot)"></line>
+            <rect class="box box-done" x="935" y="160" width="160" height="78" rx="12"></rect>
+            <text x="1015" y="191" text-anchor="middle" class="title">app_main()</text>
+            <text x="1015" y="213" text-anchor="middle" class="muted">BikeMB 业务入口</text>
+          </svg>
         </div>
         <table style="margin-top:14px">
           <tr><th>阶段</th><th>运行核心</th><th>入口/动作</th><th>下一跳</th></tr>
@@ -629,6 +736,55 @@
         </div>
         <div class="callout">当前项目未启用 Secure Boot 和 Flash Encryption。Bootloader 的镜像结构/checksum/hash 校验不能当作 BikeMB 签名身份验证；未来启用安全启动时需要单独设计密钥、烧录和恢复流程。</div>
         <div class="callout good"><strong>正式音乐开发门禁：</strong>完成 ESP-IDF 双核迁移并通过 ADR-0004 验收后，才能开始正式 <code>MusicService</code>、产品音乐流和点歌开发。门禁关闭前只允许隔离的 decoder/HTTPS stream spike、接口和 mock。</div>
+        <div class="diagram" aria-label="ADR-0004 MusicService 门禁状态图">
+          <svg viewBox="0 0 1180 210" role="img">
+            <defs>
+              <marker id="arrowGate" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="20" y="55" width="140" height="95" rx="12"></rect>
+            <text x="90" y="88" text-anchor="middle" class="title">ADR-0004</text>
+            <text x="90" y="113" text-anchor="middle" class="muted">MusicService</text>
+            <text x="90" y="132" text-anchor="middle" class="muted">前置门禁</text>
+
+            <line x1="160" y1="102" x2="185" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-done" x="190" y="55" width="140" height="95" rx="12"></rect>
+            <text x="260" y="88" text-anchor="middle" class="title">已完成</text>
+            <text x="260" y="113" text-anchor="middle" class="muted">app_main</text>
+            <text x="260" y="132" text-anchor="middle" class="muted">双核 task</text>
+
+            <line x1="330" y1="102" x2="355" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-done" x="360" y="55" width="140" height="95" rx="12"></rect>
+            <text x="430" y="88" text-anchor="middle" class="title">已完成</text>
+            <text x="430" y="113" text-anchor="middle" class="muted">LVGL</text>
+            <text x="430" y="132" text-anchor="middle" class="muted">归 bike_ui</text>
+
+            <line x1="500" y1="102" x2="525" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-done" x="530" y="55" width="145" height="95" rx="12"></rect>
+            <text x="602" y="82" text-anchor="middle" class="title">已完成</text>
+            <text x="602" y="107" text-anchor="middle" class="muted">AI / Wi-Fi</text>
+            <text x="602" y="126" text-anchor="middle" class="muted">Cloud / Audio</text>
+
+            <line x1="675" y1="102" x2="700" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-done" x="705" y="55" width="145" height="95" rx="12"></rect>
+            <text x="777" y="88" text-anchor="middle" class="title">已完成</text>
+            <text x="777" y="113" text-anchor="middle" class="muted">录音</text>
+            <text x="777" y="132" text-anchor="middle" class="muted">回复板测</text>
+
+            <line x1="850" y1="102" x2="875" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-warn" x="880" y="55" width="140" height="95" rx="12"></rect>
+            <text x="950" y="88" text-anchor="middle" class="title">未完成</text>
+            <text x="950" y="113" text-anchor="middle" class="muted">取消 / 异常</text>
+            <text x="950" y="132" text-anchor="middle" class="muted">长稳 / underrun</text>
+
+            <line x1="1020" y1="102" x2="1045" y2="102" marker-end="url(#arrowGate)"></line>
+            <rect class="box box-block" x="1050" y="55" width="110" height="95" rx="12"></rect>
+            <text x="1105" y="88" text-anchor="middle" class="title">门禁未关</text>
+            <text x="1105" y="113" text-anchor="middle" class="muted">MusicService</text>
+            <text x="1105" y="132" text-anchor="middle" class="muted">点歌阻塞</text>
+          </svg>
+        </div>
         <table style="margin-top:14px">
           <tr><th>ADR-0004 验收项</th><th>完成标准</th></tr>
           <tr><td>任务归属</td><td><code>bike_runtime</code> 固定 Core 0，<code>bike_ui</code> 固定 Core 1；产品路径由 BikeMB <code>app_main()</code> 启动。</td></tr>
@@ -641,28 +797,129 @@
       <section id="idf-migration">
         <div class="section-head">
           <h2>ESP-IDF 双核框架迁移</h2>
-          <p>这一节只描述“框架迁移”本身，不等同于完整功能迁移。目标是先固定产品运行模型，让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。</p>
+          <p>目标是让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。</p>
         </div>
-        <h3>已完成的框架层</h3>
-        <table>
-          <tr><th>项</th><th>当前实现</th></tr>
-          <tr><td>产品入口</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME</code> 构建进入 BikeMB <code>app_main()</code>，不经过 Arduino <code>setup()</code> / <code>loop()</code>。</td></tr>
-          <tr><td>Core 0 runtime</td><td><code>BikeRuntime_Start()</code> 创建 <code>bike_runtime</code>，负责系统 tick、dashboard tick、AI button 轮询和服务启动边界。</td></tr>
-          <tr><td>Core 1 UI</td><td><code>UiService_Start()</code> 创建 <code>bike_ui</code>，它是 LVGL 和 Dashboard 的唯一运行时 owner。</td></tr>
-          <tr><td>Task/core 规划</td><td><code>bike_runtime_plan.*</code> 记录 <code>bike_runtime</code>、<code>bike_ui</code>、<code>bikemb_ai</code>、<code>bikemb_cloud</code>、<code>bikemb_wifi</code>、<code>ai_button_poll</code>、<code>audio_session</code> 的归属。</td></tr>
-          <tr><td>AI/Cloud/Wi-Fi task</td><td><code>bikemb_ai</code>、<code>bikemb_cloud</code>、<code>bikemb_wifi</code> 均使用 <code>xTaskCreatePinnedToCore(..., BIKE_RUNTIME_CORE_RUNTIME)</code> 固定 Core 0。</td></tr>
-          <tr><td>跨核 UI 命令</td><td>AI button 不直接调用 Dashboard/LVGL；按下时先投递 <code>ShowAiPage</code> event，再通知 Assistant 开始处理。</td></tr>
-          <tr><td>构建 workaround</td><td>ESP-IDF <code>esp_lcd</code> 组件局部使用 <code>-O0</code>，绕开当前 xtensa GCC 编译 <code>esp_lcd_panel_rgb.c</code> 的 internal compiler error。</td></tr>
+        <div class="diagram" aria-label="ESP-IDF 双核框架迁移图">
+          <svg viewBox="0 0 1120 370" role="img">
+            <defs>
+              <marker id="arrowIdf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="475" y="20" width="170" height="70" rx="12"></rect>
+            <text x="560" y="50" text-anchor="middle" class="title">app_main()</text>
+            <text x="560" y="72" text-anchor="middle" class="muted">ESP-IDF 产品入口</text>
+
+            <rect class="lane" x="30" y="120" width="650" height="180" rx="16"></rect>
+            <text x="55" y="150" class="label">Core 0</text>
+            <rect class="box" x="70" y="165" width="160" height="80" rx="12"></rect>
+            <text x="150" y="195" text-anchor="middle" class="title">bike_runtime</text>
+            <text x="150" y="218" text-anchor="middle" class="muted">tick / 服务启动</text>
+            <rect class="box" x="270" y="165" width="160" height="80" rx="12"></rect>
+            <text x="350" y="195" text-anchor="middle" class="title">AI / Wi-Fi / Cloud</text>
+            <text x="350" y="218" text-anchor="middle" class="muted">worker + 网络云端</text>
+            <rect class="box" x="470" y="165" width="160" height="80" rx="12"></rect>
+            <text x="550" y="195" text-anchor="middle" class="title">AudioSession</text>
+            <text x="550" y="218" text-anchor="middle" class="muted">I2S0 / codec owner</text>
+
+            <rect class="lane" x="730" y="120" width="360" height="180" rx="16"></rect>
+            <text x="755" y="150" class="label">Core 1</text>
+            <rect class="box" x="825" y="165" width="170" height="80" rx="12"></rect>
+            <text x="910" y="195" text-anchor="middle" class="title">bike_ui</text>
+            <text x="910" y="218" text-anchor="middle" class="muted">LVGL / Dashboard owner</text>
+
+            <path d="M 560 90 L 150 160" marker-end="url(#arrowIdf)"></path>
+            <path d="M 560 90 L 910 160" marker-end="url(#arrowIdf)"></path>
+            <line x1="230" y1="205" x2="265" y2="205" marker-end="url(#arrowIdf)"></line>
+            <line x1="430" y1="205" x2="465" y2="205" marker-end="url(#arrowIdf)"></line>
+            <path class="soft-line" d="M 230 170 C 410 105, 700 105, 825 170" marker-end="url(#arrowIdf)"></path>
+            <text x="540" y="121" text-anchor="middle" class="muted">ShowAiPage / DashboardTick event</text>
+
+            <rect class="box box-done" x="240" y="315" width="245" height="42" rx="10"></rect>
+            <text x="362" y="342" text-anchor="middle" class="title">基础板测通过：录音 + 回复</text>
+            <rect class="box box-warn" x="535" y="315" width="345" height="42" rx="10"></rect>
+            <text x="708" y="342" text-anchor="middle" class="title">待验收：取消 / 异常 / 长稳 / underrun</text>
+          </svg>
+        </div>
+        <h3>整体线程全貌</h3>
+        <div class="diagram" aria-label="BikeMB 整体线程和任务归属图">
+          <svg viewBox="0 0 1180 540" role="img">
+            <defs>
+              <marker id="arrowThread" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <text x="25" y="34" class="label">ESP-IDF 产品路径：固定双核 ownership</text>
+            <rect class="lane" x="25" y="60" width="540" height="325" rx="16"></rect>
+            <text x="50" y="92" class="label">Core 0 / runtime 与阻塞工作</text>
+            <rect class="box" x="60" y="115" width="145" height="62" rx="10"></rect>
+            <text x="132" y="141" text-anchor="middle" class="title">main_task</text>
+            <text x="132" y="160" text-anchor="middle" class="muted">调用 app_main()</text>
+            <line x1="205" y1="146" x2="250" y2="146" marker-end="url(#arrowThread)"></line>
+            <rect class="box box-done" x="255" y="115" width="150" height="62" rx="10"></rect>
+            <text x="330" y="141" text-anchor="middle" class="title">bike_runtime</text>
+            <text x="330" y="160" text-anchor="middle" class="muted">tick / event producer</text>
+            <path d="M 330 177 L 330 207" marker-end="url(#arrowThread)"></path>
+            <rect class="box" x="65" y="220" width="135" height="62" rx="10"></rect>
+            <text x="132" y="246" text-anchor="middle" class="title">bikemb_ai</text>
+            <text x="132" y="265" text-anchor="middle" class="muted">状态机 task</text>
+            <rect class="box" x="220" y="220" width="145" height="62" rx="10"></rect>
+            <text x="292" y="246" text-anchor="middle" class="title">bikemb_cloud</text>
+            <text x="292" y="265" text-anchor="middle" class="muted">STT / LLM / TTS</text>
+            <rect class="box" x="385" y="220" width="135" height="62" rx="10"></rect>
+            <text x="452" y="246" text-anchor="middle" class="title">bikemb_wifi</text>
+            <text x="452" y="265" text-anchor="middle" class="muted">STA reconnect</text>
+            <rect class="box box-warn" x="220" y="305" width="145" height="55" rx="10"></rect>
+            <text x="292" y="329" text-anchor="middle" class="title">AudioSession</text>
+            <text x="292" y="348" text-anchor="middle" class="muted">I2S0 owner, 非独立 task</text>
+            <line class="soft-line" x1="200" y1="251" x2="215" y2="251" marker-end="url(#arrowThread)"></line>
+            <line class="soft-line" x1="365" y1="251" x2="380" y2="251" marker-end="url(#arrowThread)"></line>
+            <line class="soft-line" x1="292" y1="282" x2="292" y2="300" marker-end="url(#arrowThread)"></line>
+
+            <rect class="lane" x="615" y="60" width="540" height="325" rx="16"></rect>
+            <text x="640" y="92" class="label">Core 1 / UI owner</text>
+            <rect class="box box-done" x="760" y="125" width="185" height="76" rx="12"></rect>
+            <text x="852" y="156" text-anchor="middle" class="title">bike_ui</text>
+            <text x="852" y="178" text-anchor="middle" class="muted">唯一 LVGL/Dashboard owner</text>
+            <rect class="box" x="760" y="250" width="185" height="76" rx="12"></rect>
+            <text x="852" y="281" text-anchor="middle" class="title">DashboardApp</text>
+            <text x="852" y="303" text-anchor="middle" class="muted">snapshot 映射和渲染</text>
+            <line x1="852" y1="201" x2="852" y2="245" marker-end="url(#arrowThread)"></line>
+            <path class="soft-line" d="M 405 146 C 540 105, 660 105, 760 145" marker-end="url(#arrowThread)"></path>
+            <text x="575" y="121" text-anchor="middle" class="muted">Runtime event queue</text>
+            <path class="soft-line" d="M 200 251 C 500 395, 705 340, 760 295" marker-end="url(#arrowThread)"></path>
+            <text x="535" y="382" text-anchor="middle" class="muted">AI snapshot: UI 只读，不跨 task 调 LVGL</text>
+
+            <text x="25" y="425" class="label">Arduino / 专项验证路径：按 feature gate 启用，不代表同时常驻</text>
+            <rect class="lane" x="25" y="445" width="1130" height="72" rx="16"></rect>
+            <rect class="box box-warn" x="55" y="462" width="160" height="40" rx="10"></rect>
+            <text x="135" y="488" text-anchor="middle" class="title">loopTask / Core 1</text>
+            <rect class="box" x="255" y="462" width="160" height="40" rx="10"></rect>
+            <text x="335" y="488" text-anchor="middle" class="title">bikemb_prompt</text>
+            <rect class="box" x="455" y="462" width="170" height="40" rx="10"></rect>
+            <text x="540" y="488" text-anchor="middle" class="title">bikemb-audio-mic</text>
+            <rect class="box" x="665" y="462" width="190" height="40" rx="10"></rect>
+            <text x="760" y="488" text-anchor="middle" class="title">bikemb-audio-capture</text>
+            <rect class="box" x="895" y="462" width="205" height="40" rx="10"></rect>
+            <text x="997" y="488" text-anchor="middle" class="title">ESP-SR callback / command</text>
+          </svg>
+        </div>
+        <table class="thread-resource-table" style="margin-top:14px">
+          <tr><th>线程 / 执行体</th><th>启用路径</th><th>Core</th><th>栈 / 优先级申请</th><th>队列 / 同步资源</th><th>主要资源申请和 owner</th></tr>
+          <tr><td><code>main_task</code></td><td>ESP-IDF 框架创建</td><td>通常 CPU0</td><td>由 ESP-IDF / sdkconfig 决定；BikeMB 未手动创建。</td><td>无 BikeMB 队列。</td><td>调用 <code>app_main()</code>，随后进入 <code>BikeRuntime_Init/Start</code>；不拥有 LVGL/I2S。</td></tr>
+          <tr><td><code>bike_runtime</code></td><td>ESP-IDF 产品路径</td><td>Core 0</td><td><code>kRuntimeTaskStackWords = 4096</code><br>priority <code>4</code></td><td><code>g_eventQueue</code>：16 个 <code>BikeEvent</code>；低优先级 tick 满队列可丢弃。</td><td>系统 tick、AI button poll、DashboardTick/ShowAiPage event producer；每 10 秒记录 internal heap、PSRAM、stack high-water 和 dropped event。</td></tr>
+          <tr><td><code>bike_ui</code></td><td>ESP-IDF 产品路径</td><td>Core 1</td><td><code>kUiTaskStackWords = 8192</code><br>priority <code>5</code></td><td>消费 runtime <code>g_eventQueue</code>；5 ms queue wait。</td><td>唯一 LVGL 和 Dashboard owner；调用 <code>LvglPort_Init/Tick/Run</code> 和 <code>DashboardApp_*</code>；每 10 秒记录 heap、PSRAM、stack high-water、render_ms、LVGL handler/flush stats。</td></tr>
+          <tr><td><code>bikemb_ai</code></td><td><code>BIKE_MB_ENABLE_AI_ASSISTANT</code></td><td>Core 0</td><td><code>kAssistantStackBytes = 12 * 1024</code><br>priority <code>2</code></td><td><code>s_commandQueue</code>：8 个 <code>BikeMbAiEvent</code>；<code>s_snapshotMux</code> 保护 UI snapshot。</td><td>AI 状态机唯一写入者；20 ms tick；管理 request_id、capture 状态、云 stage 提交和 snapshot 发布。</td></tr>
+          <tr><td><code>bikemb_cloud</code></td><td>AI real/mock provider</td><td>Core 0</td><td><code>kCloudWorkerStackBytes = 12 * 1024</code><br>priority <code>1</code></td><td><code>s_queue</code>：4 个 <code>BikeMbCloudJob</code>；<code>s_requestMux</code> / <code>s_clipMux</code>。</td><td>阻塞执行 STT/LLM/TTS；静态文本缓冲：STT 512B、answer 192B；HTTP write buffer 1024B；JSON body 上限 4096B；SSE line 12KB；TTS PCM 最多 320000 samples 约 640KB，优先 PSRAM，播放上限 96000 samples。</td></tr>
+          <tr><td><code>bikemb_wifi</code></td><td><code>BIKE_MB_ENABLE_AI_ASSISTANT</code></td><td>Core 0</td><td><code>kWifiServiceStackBytes = 6144</code><br>priority <code>1</code></td><td><code>s_core</code> 状态机；无公开队列。</td><td>ESP-IDF 下初始化 NVS、<code>esp_netif</code>、<code>esp_event</code>、<code>esp_wifi</code> 和 STA netif；1 秒 poll，10 秒重试连接；只向 AI 发布 connected/offline。</td></tr>
+          <tr><td><code>AudioSession</code></td><td><code>BIKE_MB_ENABLE_AUDIO_SESSION</code></td><td>非独立 task</td><td>无 task 栈申请；被 AI/Cloud 调用。</td><td><code>BikeMbAudioSessionCore</code> owner/request_id 互斥语义。</td><td>I2S0、ES8311、ES7210 owner；录音按 16 kHz mono int16 申请 PSRAM，最长 10 秒约 320KB；每次 poll 使用 128 stereo frames 临时栈缓冲约 512B。</td></tr>
+          <tr><td><code>loopTask</code></td><td>Arduino 回归路径</td><td>通常 Core 1</td><td>由 Arduino core 创建；BikeMB 未手动配置。</td><td>无统一 runtime event queue。</td><td>执行 <code>setup()/loop()</code>，用于基础回归和专项 bring-up；产品新能力不应继续依赖该路径。</td></tr>
+          <tr><td><code>bikemb_prompt</code></td><td><code>BIKE_MB_ENABLE_AUDIO_PROMPTS</code></td><td>未 pin</td><td><code>xTaskCreate(..., 4096, priority 1)</code></td><td><code>g_promptTask</code> handle；<code>xTaskNotify(..., eSetValueWithOverwrite)</code> 覆盖旧播放请求。</td><td>后台播放档位预录 PCM；连续点击时新请求打断旧语音；属于 Arduino 音频播报验证路径。</td></tr>
+          <tr><td><code>bikemb-audio-mic</code></td><td><code>BIKE_MB_ENABLE_AUDIO_SELF_TEST</code></td><td>Core 0</td><td><code>kMicTaskStackBytes = 4096</code><br>priority <code>1</code></td><td><code>g_micTask</code> handle。</td><td>音频自检麦克风读取与 RMS 诊断；只在 self-test 环境启用。</td></tr>
+          <tr><td><code>bikemb-audio-capture</code></td><td>audio capture self-test</td><td>未 pin</td><td><code>kCaptureTaskStackBytes = 4096</code><br>priority <code>1</code></td><td><code>g_captureTask</code> handle。</td><td>录音捕获专项测试 task；用于验证 capture core，不是产品常驻路径。</td></tr>
+          <tr><td>ESP-SR callback / internal task</td><td><code>voice-direct-test</code></td><td>由 ESP-SR / Arduino wrapper 决定</td><td>BikeMB 未直接创建独立 task。</td><td><code>g_pendingCommand</code> 暂存识别命令。</td><td>使用 ES7210/I2S samples 和 flash 中 <code>srmodels.bin</code>；callback 把命令映射为 Dashboard 翻页。</td></tr>
         </table>
-        <h3>仍未完成的迁移层</h3>
-        <table>
-          <tr><th>项</th><th>为什么还不能算完成</th></tr>
-          <tr><td>AudioSession ESP-IDF 实现</td><td>当前真实 codec/I2S 路径仍依赖 Arduino <code>ESP_I2S</code>；ESP-IDF 下只是可编译边界。</td></tr>
-          <tr><td>Wi-Fi/HTTPS transport</td><td>真实云闭环仍依赖 Arduino <code>WiFiClientSecure</code>；ESP-IDF 下需要 <code>esp_wifi</code>、<code>esp_http_client</code> 或等价 adapter。</td></tr>
-          <tr><td>语音闭环板级验证</td><td>还没在 ESP-IDF 双核 env 上完成录音、STT、LLM、TTS、播放和取消回归。</td></tr>
-          <tr><td>资源基线</td><td>还没记录 heap、largest block、PSRAM、task stack high-water mark、UI 延迟和 audio underrun。</td></tr>
-          <tr><td>架构门禁验收</td><td>ADR-0004 要求软件架构根据代码、构建、板级验证和资源数据一起确认，不能只看能编译。</td></tr>
-        </table>
+        <div class="callout">表中是代码级资源预算，不等同于实测峰值。ESP-IDF 内部 Wi-Fi/lwIP/timer/idle task、TLS 堆分配和 LVGL draw buffer 峰值需要在板上通过串口诊断、heap trace 或 <code>uxTaskGetSystemState()</code> 再补运行时基线。</div>
         <div class="callout good">对开发工程师的实现约束：新功能只允许接入 <code>bike_runtime</code> / <code>bike_ui</code> / queue-event-snapshot 模型；除 bring-up/回归用途外，不应再把产品能力写回 Arduino <code>loop()</code>。</div>
       </section>
 
@@ -671,12 +928,33 @@
           <h2>模块地图</h2>
           <p>看调用方向时，从 <code>main.cpp</code> 往下追；看 UI 时从 <code>DashboardApp</code> 追到 <code>dashboard_pages</code>。</p>
         </div>
-        <div class="flow">
-          <div class="node"><b>main.cpp</b><span>setup/loop、编译开关、命令路由</span></div>
-          <div class="node"><b>DashboardApp</b><span>UI 对外命令边界：翻页、tick、档位 callback</span></div>
-          <div class="node"><b>View Core</b><span>页面容器、触摸手势、页面显示状态</span></div>
-          <div class="node"><b>Pages</b><span>首页 / AI / 详情的 LVGL object tree</span></div>
-          <div class="node"><b>LVGL Port</b><span>display flush、touch read、lv_timer_handler</span></div>
+        <div class="diagram" aria-label="模块调用方向图">
+          <svg viewBox="0 0 1040 240" role="img">
+            <defs>
+              <marker id="arrowModule" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="35" y="75" width="160" height="80" rx="12"></rect>
+            <text x="115" y="106" text-anchor="middle" class="title">main.cpp</text>
+            <text x="115" y="129" text-anchor="middle" class="muted">入口 / feature gate</text>
+            <line x1="195" y1="115" x2="235" y2="115" marker-end="url(#arrowModule)"></line>
+            <rect class="box" x="240" y="75" width="170" height="80" rx="12"></rect>
+            <text x="325" y="106" text-anchor="middle" class="title">DashboardApp</text>
+            <text x="325" y="129" text-anchor="middle" class="muted">UI 命令边界</text>
+            <line x1="410" y1="115" x2="450" y2="115" marker-end="url(#arrowModule)"></line>
+            <rect class="box" x="455" y="75" width="160" height="80" rx="12"></rect>
+            <text x="535" y="106" text-anchor="middle" class="title">View Core</text>
+            <text x="535" y="129" text-anchor="middle" class="muted">页面状态 / 手势</text>
+            <line x1="615" y1="115" x2="655" y2="115" marker-end="url(#arrowModule)"></line>
+            <rect class="box" x="660" y="75" width="160" height="80" rx="12"></rect>
+            <text x="740" y="106" text-anchor="middle" class="title">Pages</text>
+            <text x="740" y="129" text-anchor="middle" class="muted">首页 / AI / 详情</text>
+            <line x1="820" y1="115" x2="860" y2="115" marker-end="url(#arrowModule)"></line>
+            <rect class="box" x="865" y="75" width="150" height="80" rx="12"></rect>
+            <text x="940" y="106" text-anchor="middle" class="title">LVGL Port</text>
+            <text x="940" y="129" text-anchor="middle" class="muted">flush / touch / timer</text>
+          </svg>
         </div>
         <div class="grid" style="margin-top:14px">
           <article class="card">
@@ -763,6 +1041,41 @@
             <p>DeepSeek 运行时接线、CA 证书校验、主动中断 HTTPS、流式 TTS、AI 页面控制按钮、HTTPS MP3、Music Service 和点歌 resolver。</p>
           </article>
         </div>
+        <h3>启动路径</h3>
+        <div class="diagram" aria-label="AI 助手启动路径图">
+          <svg viewBox="0 0 1040 310" role="img">
+            <defs>
+              <marker id="arrowAiStart" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="lane" x="25" y="45" width="470" height="215" rx="16"></rect>
+            <text x="50" y="76" class="label">Arduino 回归路径</text>
+            <rect class="box" x="75" y="110" width="170" height="76" rx="12"></rect>
+            <text x="160" y="140" text-anchor="middle" class="title">setup()</text>
+            <text x="160" y="162" text-anchor="middle" class="muted">Assistant / Wi-Fi</text>
+            <rect class="box" x="300" y="110" width="150" height="76" rx="12"></rect>
+            <text x="375" y="140" text-anchor="middle" class="title">loop()</text>
+            <text x="375" y="162" text-anchor="middle" class="muted">button + LVGL</text>
+            <line x1="245" y1="148" x2="295" y2="148" marker-end="url(#arrowAiStart)"></line>
+
+            <rect class="lane" x="545" y="45" width="470" height="215" rx="16"></rect>
+            <text x="570" y="76" class="label">ESP-IDF 产品路径</text>
+            <rect class="box" x="590" y="105" width="150" height="76" rx="12"></rect>
+            <text x="665" y="135" text-anchor="middle" class="title">app_main()</text>
+            <text x="665" y="157" text-anchor="middle" class="muted">BikeMB runtime</text>
+            <rect class="box" x="815" y="105" width="155" height="76" rx="12"></rect>
+            <text x="892" y="135" text-anchor="middle" class="title">Start()</text>
+            <text x="892" y="157" text-anchor="middle" class="muted">服务和 task</text>
+            <line x1="740" y1="143" x2="810" y2="143" marker-end="url(#arrowAiStart)"></line>
+            <rect class="box box-done" x="625" y="205" width="150" height="50" rx="10"></rect>
+            <text x="700" y="235" text-anchor="middle" class="title">Core 0 runtime</text>
+            <rect class="box box-done" x="800" y="205" width="150" height="50" rx="10"></rect>
+            <text x="875" y="235" text-anchor="middle" class="title">Core 1 UI</text>
+            <path d="M 865 181 L 720 200" marker-end="url(#arrowAiStart)"></path>
+            <path d="M 895 181 L 875 200" marker-end="url(#arrowAiStart)"></path>
+          </svg>
+        </div>
         <table style="margin-top:14px">
           <tr><th>模块</th><th>关键接口</th><th>所有权 / 数据边界</th></tr>
           <tr><td><code>input/ai_button_logic.*</code></td><td><code>BikeMbAiButtonLogic_Init/Update</code></td><td>纯启动保护和消抖 reducer。</td></tr>
@@ -775,13 +1088,133 @@
           <tr><td><code>network/wifi_service*.*</code></td><td><code>BikeMbWifiService_Init</code> / core <code>Update</code></td><td><code>bikemb_wifi</code> 后台连接，10 s 重试，只发布 connected 状态。</td></tr>
           <tr><td><code>app/ai_assistant_ui_state.*</code></td><td><code>BikeMbAiUiState_FromSnapshot</code></td><td>把内部状态映射成 dashboard 安全文案和展示层级。</td></tr>
         </table>
-        <div class="flow" style="margin-top:14px">
-          <div class="node"><b>BOOT / GPIO0</b><span>3000 ms guard<br>50 ms release<br>30 ms debounce</span></div>
-          <div class="node"><b>bikemb_ai</b><span>queue → reducer → snapshot/effects</span></div>
-          <div class="node"><b>AudioSession</b><span>capture clip + PCM output</span></div>
-          <div class="node"><b>bikemb_cloud</b><span>Qwen ASR → Chat → CosyVoice</span></div>
-          <div class="node"><b>DashboardApp</b><span>copy snapshot → AI UI state</span></div>
-          <div class="node"><b>LVGL Pages</b><span>chip / overlay / full-page semantics</span></div>
+        <h3>语音数据流</h3>
+        <div class="diagram" aria-label="AI 语音数据流图">
+          <svg viewBox="0 0 1180 250" role="img">
+            <defs>
+              <marker id="arrowVoice" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="20" y="75" width="135" height="92" rx="12"></rect>
+            <text x="87" y="106" text-anchor="middle" class="title">BOOT / GPIO0</text>
+            <text x="87" y="129" text-anchor="middle" class="muted">3s guard</text>
+            <text x="87" y="148" text-anchor="middle" class="muted">release + debounce</text>
+            <line x1="155" y1="121" x2="180" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box" x="185" y="75" width="145" height="92" rx="12"></rect>
+            <text x="257" y="106" text-anchor="middle" class="title">AudioSession</text>
+            <text x="257" y="129" text-anchor="middle" class="muted">16 kHz mono</text>
+            <text x="257" y="148" text-anchor="middle" class="muted">最长 10 秒</text>
+            <line x1="330" y1="121" x2="355" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box" x="360" y="75" width="135" height="92" rx="12"></rect>
+            <text x="427" y="106" text-anchor="middle" class="title">PSRAM clip</text>
+            <text x="427" y="129" text-anchor="middle" class="muted">request_id</text>
+            <text x="427" y="148" text-anchor="middle" class="muted">转交指针</text>
+            <line x1="495" y1="121" x2="520" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box" x="525" y="75" width="135" height="92" rx="12"></rect>
+            <text x="592" y="106" text-anchor="middle" class="title">Qwen ASR</text>
+            <text x="592" y="129" text-anchor="middle" class="muted">Base64 WAV</text>
+            <text x="592" y="148" text-anchor="middle" class="muted">JSON</text>
+            <line x1="660" y1="121" x2="685" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box" x="690" y="75" width="135" height="92" rx="12"></rect>
+            <text x="757" y="106" text-anchor="middle" class="title">Qwen Chat</text>
+            <text x="757" y="129" text-anchor="middle" class="muted">短中文回答</text>
+            <text x="757" y="148" text-anchor="middle" class="muted">UTF-8 截断</text>
+            <line x1="825" y1="121" x2="850" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box" x="855" y="75" width="150" height="92" rx="12"></rect>
+            <text x="930" y="106" text-anchor="middle" class="title">CosyVoice SSE</text>
+            <text x="930" y="129" text-anchor="middle" class="muted">Base64 PCM</text>
+            <text x="930" y="148" text-anchor="middle" class="muted">完整缓冲播放</text>
+            <line x1="1005" y1="121" x2="1030" y2="121" marker-end="url(#arrowVoice)"></line>
+            <rect class="box box-done" x="1035" y="75" width="125" height="92" rx="12"></rect>
+            <text x="1097" y="106" text-anchor="middle" class="title">Speaker</text>
+            <text x="1097" y="129" text-anchor="middle" class="muted">2x gain</text>
+            <text x="1097" y="148" text-anchor="middle" class="muted">stereo I2S</text>
+          </svg>
+        </div>
+        <h3>Core 通信</h3>
+        <div class="diagram" aria-label="AI 助手跨核通信图">
+          <svg viewBox="0 0 1080 390" role="img">
+            <defs>
+              <marker id="arrowCore" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="lane" x="30" y="45" width="650" height="290" rx="16"></rect>
+            <text x="55" y="78" class="label">Core 0</text>
+            <rect class="box" x="70" y="110" width="155" height="70" rx="12"></rect>
+            <text x="147" y="140" text-anchor="middle" class="title">bike_runtime</text>
+            <text x="147" y="162" text-anchor="middle" class="muted">tick / event producer</text>
+            <rect class="box" x="265" y="90" width="150" height="70" rx="12"></rect>
+            <text x="340" y="120" text-anchor="middle" class="title">bikemb_wifi</text>
+            <text x="340" y="142" text-anchor="middle" class="muted">connected/offline</text>
+            <rect class="box" x="265" y="200" width="150" height="70" rx="12"></rect>
+            <text x="340" y="230" text-anchor="middle" class="title">bikemb_ai</text>
+            <text x="340" y="252" text-anchor="middle" class="muted">状态机 + snapshot</text>
+            <rect class="box" x="455" y="90" width="155" height="70" rx="12"></rect>
+            <text x="532" y="120" text-anchor="middle" class="title">bikemb_cloud</text>
+            <text x="532" y="142" text-anchor="middle" class="muted">request_id 结果</text>
+            <rect class="box" x="455" y="220" width="155" height="70" rx="12"></rect>
+            <text x="532" y="250" text-anchor="middle" class="title">AudioSession</text>
+            <text x="532" y="272" text-anchor="middle" class="muted">capture / TTS PCM</text>
+
+            <rect class="lane" x="740" y="45" width="305" height="290" rx="16"></rect>
+            <text x="765" y="78" class="label">Core 1</text>
+            <rect class="box box-done" x="815" y="155" width="155" height="78" rx="12"></rect>
+            <text x="892" y="188" text-anchor="middle" class="title">bike_ui</text>
+            <text x="892" y="211" text-anchor="middle" class="muted">LVGL / Dashboard</text>
+
+            <line x1="225" y1="145" x2="735" y2="178" marker-end="url(#arrowCore)"></line>
+            <text x="470" y="178" text-anchor="middle" class="muted">ShowAiPage / DashboardTick</text>
+            <path class="soft-line" d="M 340 160 L 340 195" marker-end="url(#arrowCore)"></path>
+            <text x="375" y="184" class="muted">网络状态</text>
+            <line class="soft-line" x1="415" y1="235" x2="450" y2="126" marker-end="url(#arrowCore)"></line>
+            <text x="428" y="178" class="muted">stage job</text>
+            <line class="soft-line" x1="532" y1="160" x2="532" y2="215" marker-end="url(#arrowCore)"></line>
+            <text x="548" y="190" class="muted">TTS</text>
+            <path class="soft-line" d="M 455 255 C 380 310, 270 295, 340 270" marker-end="url(#arrowCore)"></path>
+            <text x="373" y="315" text-anchor="middle" class="muted">clip / release</text>
+          </svg>
+        </div>
+        <h3>CloudWorker HTTP 分支</h3>
+        <div class="diagram" aria-label="CloudWorker HTTP 分支图">
+          <svg viewBox="0 0 1080 330" role="img">
+            <defs>
+              <marker id="arrowCloud" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="45" y="125" width="145" height="75" rx="12"></rect>
+            <text x="117" y="156" text-anchor="middle" class="title">Cloud job</text>
+            <text x="117" y="178" text-anchor="middle" class="muted">STT / LLM / TTS</text>
+            <line x1="190" y1="162" x2="235" y2="162" marker-end="url(#arrowCloud)"></line>
+            <rect class="box" x="240" y="125" width="145" height="75" rx="12"></rect>
+            <text x="312" y="156" text-anchor="middle" class="title">运行时分支</text>
+            <text x="312" y="178" text-anchor="middle" class="muted">Arduino 或 ESP-IDF</text>
+
+            <path d="M 385 145 L 440 90" marker-end="url(#arrowCloud)"></path>
+            <rect class="box box-warn" x="445" y="45" width="165" height="78" rx="12"></rect>
+            <text x="527" y="77" text-anchor="middle" class="title">Arduino</text>
+            <text x="527" y="99" text-anchor="middle" class="muted">WiFiClientSecure</text>
+            <path d="M 385 180 L 440 235" marker-end="url(#arrowCloud)"></path>
+            <rect class="box box-done" x="445" y="205" width="165" height="78" rx="12"></rect>
+            <text x="527" y="237" text-anchor="middle" class="title">ESP-IDF</text>
+            <text x="527" y="259" text-anchor="middle" class="muted">esp_http_client</text>
+
+            <path d="M 610 84 C 655 84, 665 128, 700 145" marker-end="url(#arrowCloud)"></path>
+            <path d="M 610 244 C 655 244, 665 198, 700 180" marker-end="url(#arrowCloud)"></path>
+            <rect class="box" x="705" y="85" width="145" height="75" rx="12"></rect>
+            <text x="777" y="116" text-anchor="middle" class="title">ASR / Chat</text>
+            <text x="777" y="138" text-anchor="middle" class="muted">bounded JSON</text>
+            <rect class="box" x="705" y="190" width="145" height="75" rx="12"></rect>
+            <text x="777" y="221" text-anchor="middle" class="title">CosyVoice</text>
+            <text x="777" y="243" text-anchor="middle" class="muted">SSE + PCM</text>
+
+            <line x1="850" y1="228" x2="900" y2="228" marker-end="url(#arrowCloud)"></line>
+            <rect class="box box-done" x="905" y="190" width="140" height="75" rx="12"></rect>
+            <text x="975" y="221" text-anchor="middle" class="title">AudioSession</text>
+            <text x="975" y="243" text-anchor="middle" class="muted">写入 I2S</text>
+          </svg>
         </div>
         <div class="grid two" style="margin-top:14px">
           <article class="card">
@@ -850,12 +1283,33 @@
           <h2>语音识别框架</h2>
           <p>当前语音识别是 ESP-SR direct command mode，用来验证“下一页/上一页”能力。</p>
         </div>
-        <div class="flow">
-          <div class="node"><b>ES7210 Mic</b><span>16 kHz stereo I2S samples</span></div>
-          <div class="node"><b>ESP_SR</b><span>SR_MODE_COMMAND</span></div>
-          <div class="node"><b>handleSrEvent</b><span>识别成功后设置 g_pendingCommand</span></div>
-          <div class="node"><b>main.cpp</b><span>BikeMbVoiceCommands_ConsumeCommand</span></div>
-          <div class="node"><b>DashboardApp</b><span>NextPage / PreviousPage</span></div>
+        <div class="diagram" aria-label="ESP-SR 语音命令链路图">
+          <svg viewBox="0 0 1040 240" role="img">
+            <defs>
+              <marker id="arrowSr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="35" y="75" width="160" height="80" rx="12"></rect>
+            <text x="115" y="106" text-anchor="middle" class="title">ES7210 Mic</text>
+            <text x="115" y="129" text-anchor="middle" class="muted">16 kHz stereo I2S</text>
+            <line x1="195" y1="115" x2="235" y2="115" marker-end="url(#arrowSr)"></line>
+            <rect class="box" x="240" y="75" width="160" height="80" rx="12"></rect>
+            <text x="320" y="106" text-anchor="middle" class="title">ESP_SR</text>
+            <text x="320" y="129" text-anchor="middle" class="muted">SR_MODE_COMMAND</text>
+            <line x1="400" y1="115" x2="440" y2="115" marker-end="url(#arrowSr)"></line>
+            <rect class="box" x="445" y="75" width="170" height="80" rx="12"></rect>
+            <text x="530" y="106" text-anchor="middle" class="title">handleSrEvent</text>
+            <text x="530" y="129" text-anchor="middle" class="muted">设置 pending command</text>
+            <line x1="615" y1="115" x2="655" y2="115" marker-end="url(#arrowSr)"></line>
+            <rect class="box" x="660" y="75" width="160" height="80" rx="12"></rect>
+            <text x="740" y="106" text-anchor="middle" class="title">main.cpp</text>
+            <text x="740" y="129" text-anchor="middle" class="muted">ConsumeCommand</text>
+            <line x1="820" y1="115" x2="860" y2="115" marker-end="url(#arrowSr)"></line>
+            <rect class="box box-done" x="865" y="75" width="150" height="80" rx="12"></rect>
+            <text x="940" y="106" text-anchor="middle" class="title">DashboardApp</text>
+            <text x="940" y="129" text-anchor="middle" class="muted">Next / Previous</text>
+          </svg>
         </div>
         <table style="margin-top:14px">
           <tr><th>函数/数据</th><th>作用</th></tr>
@@ -882,6 +1336,8 @@
           <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-voice-mock-test</code></td><td>Arduino</td><td>真实录音、mock provider 和本地提示音。</td><td>AI + AudioSession + mock provider</td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test</code></td><td>Arduino</td><td>真实云语音问答闭环。</td><td>AI + AudioSession + 测试专用 insecure TLS</td></tr>
           <tr><td><code>esp32-s3-touch-lcd-1-85c-idf</code></td><td>ESP-IDF</td><td>Runtime/Event/Service 迁移构建。</td><td><code>BIKE_MB_USE_ESPIDF_RUNTIME=1</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-idf-audio-session-test</code></td><td>ESP-IDF</td><td>AudioSession codec/I2S 初始化迁移验证。</td><td><code>BIKE_MB_IDF_ENABLE_AUDIO_SESSION=ON</code></td></tr>
+          <tr><td><code>esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test</code></td><td>ESP-IDF</td><td>当前 ESP-IDF 云端语音助手验收环境。</td><td>AI + AudioSession，基础录音/回复已确认；取消和长稳基线待验收</td></tr>
         </table>
         <div class="grid two" style="margin-top:14px">
           <article class="card">
@@ -893,50 +1349,105 @@
             <p><code>voice-direct-test</code> 使用 framework 提供的 <code>esp_sr_16.csv</code>。模型文件 <code>srmodels.bin</code> 通过脚本追加烧录到 <code>0xC10000</code>。</p>
           </article>
         </div>
-        <div class="partition-layout">
-          <div class="partition-stack">
-            <h3>默认 / 音频播报环境</h3>
-            <div class="partition-block" style="--h:48px"><span class="partition-addr">0x000000<br>至 0x007FFF</span><span><span class="partition-name">Bootloader 区域</span><span class="partition-note">ESP32-S3 二级启动加载器从 0x000000 烧录；芯片 ROM 一级 Bootloader 不在 Flash 中。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">记录各分区名称、类型、偏移和大小。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、累计里程等小型 KV 数据。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
-            <div class="partition-block app" style="--h:98px"><span class="partition-addr">0x010000<br>6.25MB</span><span><span class="partition-name">app0 / ota_0</span><span class="partition-note">当前或候选固件 A；默认布局给 LVGL 和音频资源较大空间。</span></span></div>
-            <div class="partition-block app" style="--h:98px"><span class="partition-addr">0x650000<br>6.25MB</span><span><span class="partition-name">app1 / ota_1</span><span class="partition-note">OTA 固件 B，可用于后续升级回滚。</span></span></div>
-            <div class="partition-block fs" style="--h:62px"><span class="partition-addr">0xC90000<br>3.375MB</span><span><span class="partition-name">spiffs</span><span class="partition-note">图片、字体、配置等文件资源预留区。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0xFF0000<br>64KB</span><span><span class="partition-name">coredump</span><span class="partition-note">异常崩溃转储。</span></span></div>
-          </div>
-          <table>
-            <tr><th>区域</th><th>简要说明</th></tr>
-            <tr><td>Bootloader / Partition Table</td><td>启动链路基础设施。通常不在应用逻辑中直接操作。</td></tr>
-            <tr><td><code>nvs</code></td><td>适合保存少量持久化数据，例如用户设置、传感器校准、累计里程。</td></tr>
-            <tr><td><code>otadata</code></td><td>保存 OTA 选择状态，让 bootloader 知道启动哪个 app 槽。</td></tr>
-            <tr><td><code>app0/app1</code></td><td>两个应用槽。默认布局每个约 6.25MB，比较适合当前 UI + 音频资源验证。</td></tr>
-            <tr><td><code>spiffs</code></td><td>文件系统区域。后续如果字体/图片不想编译进固件，可以放这里。</td></tr>
-            <tr><td><code>coredump</code></td><td>保存崩溃信息，辅助排查死机、异常重启。</td></tr>
-          </table>
+        <div class="diagram" aria-label="默认固件 Flash 分区图">
+          <svg viewBox="0 0 1180 310" role="img">
+            <defs>
+              <marker id="arrowPartitionDefault" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <text x="25" y="34" class="label">默认 / 音频播报环境：16MB Flash 视图</text>
+            <rect class="lane" x="25" y="70" width="1130" height="105" rx="14"></rect>
+            <rect class="box" x="40" y="92" width="78" height="62" rx="8"></rect>
+            <text x="79" y="118" text-anchor="middle" class="title">Boot</text>
+            <text x="79" y="139" text-anchor="middle" class="muted">0x000000</text>
+            <rect class="box" x="122" y="92" width="62" height="62" rx="8"></rect>
+            <text x="153" y="118" text-anchor="middle" class="title">Table</text>
+            <text x="153" y="139" text-anchor="middle" class="muted">0x008000</text>
+            <rect class="box" x="188" y="92" width="58" height="62" rx="8"></rect>
+            <text x="217" y="118" text-anchor="middle" class="title">NVS</text>
+            <text x="217" y="139" text-anchor="middle" class="muted">20KB</text>
+            <rect class="box" x="250" y="92" width="58" height="62" rx="8"></rect>
+            <text x="279" y="118" text-anchor="middle" class="title">OTA</text>
+            <text x="279" y="139" text-anchor="middle" class="muted">8KB</text>
+            <rect class="box box-done" x="312" y="92" width="275" height="62" rx="8"></rect>
+            <text x="449" y="118" text-anchor="middle" class="title">app0 / ota_0</text>
+            <text x="449" y="139" text-anchor="middle" class="muted">0x010000, 6.25MB</text>
+            <rect class="box box-done" x="591" y="92" width="275" height="62" rx="8"></rect>
+            <text x="728" y="118" text-anchor="middle" class="title">app1 / ota_1</text>
+            <text x="728" y="139" text-anchor="middle" class="muted">0x650000, 6.25MB</text>
+            <rect class="box" x="870" y="92" width="220" height="62" rx="8"></rect>
+            <text x="980" y="118" text-anchor="middle" class="title">spiffs</text>
+            <text x="980" y="139" text-anchor="middle" class="muted">0xC90000, 3.375MB</text>
+            <rect class="box box-warn" x="1094" y="92" width="46" height="62" rx="8"></rect>
+            <text x="1117" y="118" text-anchor="middle" class="title">core</text>
+            <text x="1117" y="139" text-anchor="middle" class="muted">64KB</text>
+            <line x1="312" y1="205" x2="587" y2="205" marker-end="url(#arrowPartitionDefault)"></line>
+            <line x1="866" y1="205" x2="591" y2="205" marker-end="url(#arrowPartitionDefault)"></line>
+            <text x="589" y="230" text-anchor="middle" class="muted">两个 OTA app 槽较大，适合当前 LVGL + 音频资源验证</text>
+            <text x="25" y="275" class="muted">说明：Boot/Table/NVS/otadata/coredump 为小分区，图中为可读性放大，不按精确比例绘制。</text>
+          </svg>
         </div>
-        <div class="partition-layout">
-          <div class="partition-stack">
-            <h3>ESP-SR voice-direct-test</h3>
-            <div class="partition-block" style="--h:48px"><span class="partition-addr">0x000000<br>至 0x007FFF</span><span><span class="partition-name">Bootloader 区域</span><span class="partition-note">ESP32-S3 二级启动加载器；ROM 一级 Bootloader 位于芯片 Mask ROM。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x008000</span><span><span class="partition-name">Partition Table</span><span class="partition-note">来自 <code>esp_sr_16.csv</code>，为模型分区留出固定位置。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x009000<br>20KB</span><span><span class="partition-name">nvs</span><span class="partition-note">设置、校准值、用户偏好。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0x00E000<br>8KB</span><span><span class="partition-name">otadata</span><span class="partition-note">OTA 启动选择状态。</span></span></div>
-            <div class="partition-block app" style="--h:58px"><span class="partition-addr">0x010000<br>3MB</span><span><span class="partition-name">app0 / ota_0</span><span class="partition-note">语音识别测试固件 A。</span></span></div>
-            <div class="partition-block app" style="--h:58px"><span class="partition-addr">0x310000<br>3MB</span><span><span class="partition-name">app1 / ota_1</span><span class="partition-note">语音识别测试固件 B。</span></span></div>
-            <div class="partition-block fs" style="--h:92px"><span class="partition-addr">0x610000<br>6MB</span><span><span class="partition-name">spiffs</span><span class="partition-note">文件系统资源空间。</span></span></div>
-            <div class="partition-block model" style="--h:72px"><span class="partition-addr">0xC10000<br>3.875MB</span><span><span class="partition-name">model / srmodels.bin</span><span class="partition-note">ESP-SR 语音模型，由烧录脚本作为 extra image 写入。</span></span></div>
-            <div class="partition-block" style="--h:34px"><span class="partition-addr">0xFF0000<br>64KB</span><span><span class="partition-name">coredump</span><span class="partition-note">异常崩溃转储。</span></span></div>
-          </div>
-          <table>
-            <tr><th>区域</th><th>简要说明</th></tr>
-            <tr><td><code>app0/app1</code></td><td>每个只有 3MB。相比默认布局缩小，是为了给 ESP-SR 模型分区腾出空间。</td></tr>
-            <tr><td><code>spiffs</code></td><td>ESP-SR 布局保留 6MB 文件系统区；当前语音命令验证暂未重点使用它。</td></tr>
-            <tr><td><code>model</code></td><td>放 <code>srmodels.bin</code>。当前脚本固定烧录到 <code>0xC10000</code>，必须和 <code>esp_sr_16.csv</code> 匹配。</td></tr>
-            <tr><td><code>nvs/otadata/coredump</code></td><td>用途和默认布局一致，分别用于持久化小数据、OTA 状态和崩溃转储。</td></tr>
-            <tr><td>主要风险</td><td>语音识别固件 app 空间更小；如果后续同时加入大量 UI、音频资源和 ESP-SR，需要关注固件大小。</td></tr>
-          </table>
+        <table style="margin-top:14px">
+          <tr><th>区域</th><th>简要说明</th></tr>
+          <tr><td>Bootloader / Partition Table</td><td>启动链路基础设施。通常不在应用逻辑中直接操作。</td></tr>
+          <tr><td><code>nvs</code></td><td>适合保存少量持久化数据，例如用户设置、传感器校准、累计里程。</td></tr>
+          <tr><td><code>otadata</code></td><td>保存 OTA 选择状态，让 bootloader 知道启动哪个 app 槽。</td></tr>
+          <tr><td><code>app0/app1</code></td><td>两个应用槽。默认布局每个约 6.25MB，比较适合当前 UI + 音频资源验证。</td></tr>
+          <tr><td><code>spiffs</code></td><td>文件系统区域。后续如果字体/图片不想编译进固件，可以放这里。</td></tr>
+          <tr><td><code>coredump</code></td><td>保存崩溃信息，辅助排查死机、异常重启。</td></tr>
+        </table>
+        <div class="diagram" aria-label="ESP-SR 固件 Flash 分区图">
+          <svg viewBox="0 0 1180 330" role="img">
+            <defs>
+              <marker id="arrowPartitionSr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <text x="25" y="34" class="label">ESP-SR voice-direct-test：为语音模型压缩 app 槽</text>
+            <rect class="lane" x="25" y="70" width="1130" height="105" rx="14"></rect>
+            <rect class="box" x="40" y="92" width="78" height="62" rx="8"></rect>
+            <text x="79" y="118" text-anchor="middle" class="title">Boot</text>
+            <text x="79" y="139" text-anchor="middle" class="muted">0x000000</text>
+            <rect class="box" x="122" y="92" width="62" height="62" rx="8"></rect>
+            <text x="153" y="118" text-anchor="middle" class="title">Table</text>
+            <text x="153" y="139" text-anchor="middle" class="muted">0x008000</text>
+            <rect class="box" x="188" y="92" width="58" height="62" rx="8"></rect>
+            <text x="217" y="118" text-anchor="middle" class="title">NVS</text>
+            <text x="217" y="139" text-anchor="middle" class="muted">20KB</text>
+            <rect class="box" x="250" y="92" width="58" height="62" rx="8"></rect>
+            <text x="279" y="118" text-anchor="middle" class="title">OTA</text>
+            <text x="279" y="139" text-anchor="middle" class="muted">8KB</text>
+            <rect class="box box-warn" x="312" y="92" width="150" height="62" rx="8"></rect>
+            <text x="387" y="118" text-anchor="middle" class="title">app0</text>
+            <text x="387" y="139" text-anchor="middle" class="muted">0x010000, 3MB</text>
+            <rect class="box box-warn" x="466" y="92" width="150" height="62" rx="8"></rect>
+            <text x="541" y="118" text-anchor="middle" class="title">app1</text>
+            <text x="541" y="139" text-anchor="middle" class="muted">0x310000, 3MB</text>
+            <rect class="box" x="620" y="92" width="240" height="62" rx="8"></rect>
+            <text x="740" y="118" text-anchor="middle" class="title">spiffs</text>
+            <text x="740" y="139" text-anchor="middle" class="muted">0x610000, 6MB</text>
+            <rect class="box box-done" x="864" y="92" width="220" height="62" rx="8"></rect>
+            <text x="974" y="118" text-anchor="middle" class="title">model / srmodels.bin</text>
+            <text x="974" y="139" text-anchor="middle" class="muted">0xC10000, 3.875MB</text>
+            <rect class="box box-warn" x="1088" y="92" width="52" height="62" rx="8"></rect>
+            <text x="1114" y="118" text-anchor="middle" class="title">core</text>
+            <text x="1114" y="139" text-anchor="middle" class="muted">64KB</text>
+            <path d="M 387 205 L 387 160" marker-end="url(#arrowPartitionSr)"></path>
+            <path d="M 541 205 L 541 160" marker-end="url(#arrowPartitionSr)"></path>
+            <text x="464" y="230" text-anchor="middle" class="muted">app 槽缩小到 3MB</text>
+            <path d="M 974 205 L 974 160" marker-end="url(#arrowPartitionSr)"></path>
+            <text x="974" y="230" text-anchor="middle" class="muted">ESP-SR 模型通过 extra image 写入</text>
+            <text x="25" y="285" class="muted">主要风险：语音识别固件 app 空间更小；如果后续同时加入大量 UI、音频资源和 ESP-SR，需要关注固件大小。</text>
+          </svg>
         </div>
+        <table style="margin-top:14px">
+          <tr><th>区域</th><th>简要说明</th></tr>
+          <tr><td><code>app0/app1</code></td><td>每个只有 3MB。相比默认布局缩小，是为了给 ESP-SR 模型分区腾出空间。</td></tr>
+          <tr><td><code>spiffs</code></td><td>ESP-SR 布局保留 6MB 文件系统区；当前语音命令验证暂未重点使用它。</td></tr>
+          <tr><td><code>model</code></td><td>放 <code>srmodels.bin</code>。当前脚本固定烧录到 <code>0xC10000</code>，必须和 <code>esp_sr_16.csv</code> 匹配。</td></tr>
+          <tr><td><code>nvs/otadata/coredump</code></td><td>用途和默认布局一致，分别用于持久化小数据、OTA 状态和崩溃转储。</td></tr>
+        </table>
         <pre><code>srmodels = framework_libs / "esp32s3" / "esp_sr" / "srmodels.bin"
 env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
       </section>
@@ -944,7 +1455,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
       <section id="idf">
         <div class="section-head">
           <h2>ESP-IDF Runtime 骨架</h2>
-          <p>这条路径已经承接产品入口、task/core 归属和 UI 跨核事件；完整音频/语音验证仍需后续板级迁移。</p>
+          <p>这条路径已经承接产品入口、task/core 归属、UI 跨核事件、ESP-IDF AudioSession、Wi-Fi STA 和 Qwen/CosyVoice 云端 transport。</p>
         </div>
         <table>
           <tr><th>函数</th><th>作用</th></tr>
@@ -955,7 +1466,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>UiService_Start(...)</code></td><td>启动拥有 LVGL 的 UI task。</td></tr>
           <tr><td><code>UiTask(...)</code></td><td>初始化 LVGL/dashboard，消费事件，并调用 <code>LvglPort_Run()</code>。</td></tr>
         </table>
-        <div class="callout">当前仍未满足 ADR-0004：代码层第一阶段已固定 <code>bike_runtime</code> Core 0、<code>bike_ui</code> Core 1，并将 AI/Cloud/Wi-Fi worker 固定到 Core 0；但真实音频 codec/I2S、云 transport、板级回归和资源基线尚未完成。正式 MusicService 和点歌因此保持阻塞。</div>
+        <div class="callout">当前仍未满足 ADR-0004：ESP-IDF 云端语音基础录音和回复已由用户确认，但取消、断网/超时异常、长稳资源基线、UI 延迟和 audio underrun 尚未完成验收。正式 MusicService 和点歌因此保持阻塞。</div>
       </section>
 
       <section id="tests">
@@ -963,6 +1474,89 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <h2>验证入口</h2>
           <p>当前测试入口是 <code>tools/run-tests.ps1</code>，它会扫描并执行 <code>tools/tests/test_*.py</code>。这些 Python 脚本主要是 contract tests：读取源码、配置和文档中的关键符号，确认模块边界、feature gate、构建环境和架构约束没有被破坏。</p>
           <p>目前没有引入 Unity、GoogleTest、Catch2、doctest 这类正式 C/C++ UT 框架。仓库里的 C++ “单元级”测试是 host-side assert tests：由 Python 脚本调用本机 <code>g++ -std=c++17 -Wall -Wextra -Werror</code> 编译纯逻辑 <code>.cpp</code> 和 <code>tools/tests/*_test.cpp</code>，运行后依靠 <code>assert()</code> 判断结果。</p>
+        </div>
+        <div class="diagram" aria-label="测试验证流程图">
+          <svg viewBox="0 0 1050 250" role="img">
+            <defs>
+              <marker id="arrowTest" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box" x="25" y="78" width="145" height="78" rx="12"></rect>
+            <text x="97" y="110" text-anchor="middle" class="title">代码/文档变更</text>
+            <text x="97" y="132" text-anchor="middle" class="muted">先跑轻量契约</text>
+            <line x1="170" y1="117" x2="215" y2="117" marker-end="url(#arrowTest)"></line>
+            <rect class="box box-done" x="220" y="78" width="170" height="78" rx="12"></rect>
+            <text x="305" y="110" text-anchor="middle" class="title">run-tests.ps1</text>
+            <text x="305" y="132" text-anchor="middle" class="muted">Python + C++ assert</text>
+            <line x1="390" y1="117" x2="435" y2="117" marker-end="url(#arrowTest)"></line>
+            <rect class="box" x="440" y="78" width="145" height="78" rx="12"></rect>
+            <text x="512" y="110" text-anchor="middle" class="title">SmokeBuild?</text>
+            <text x="512" y="132" text-anchor="middle" class="muted">需要时打开</text>
+            <path d="M 585 100 L 640 70" marker-end="url(#arrowTest)"></path>
+            <text x="620" y="72" text-anchor="middle" class="muted">否</text>
+            <rect class="box box-done" x="645" y="40" width="150" height="60" rx="12"></rect>
+            <text x="720" y="76" text-anchor="middle" class="title">文档验证结束</text>
+            <path d="M 585 138 L 640 168" marker-end="url(#arrowTest)"></path>
+            <text x="620" y="172" text-anchor="middle" class="muted">是</text>
+            <rect class="box" x="645" y="145" width="150" height="60" rx="12"></rect>
+            <text x="720" y="181" text-anchor="middle" class="title">PlatformIO build</text>
+            <line x1="795" y1="175" x2="840" y2="175" marker-end="url(#arrowTest)"></line>
+            <rect class="box box-warn" x="845" y="145" width="180" height="60" rx="12"></rect>
+            <text x="935" y="171" text-anchor="middle" class="title">上板验证</text>
+            <text x="935" y="190" text-anchor="middle" class="muted">UI / 录音 / TTS / 长稳</text>
+          </svg>
+        </div>
+        <h3>UT 测试框架</h3>
+        <div class="diagram" aria-label="BikeMB 当前 UT 和 contract 测试框架图">
+          <svg viewBox="0 0 1120 380" role="img">
+            <defs>
+              <marker id="arrowUt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(200,243,93,.85)"></path>
+              </marker>
+            </defs>
+            <rect class="box box-done" x="35" y="145" width="160" height="75" rx="12"></rect>
+            <text x="115" y="176" text-anchor="middle" class="title">run-tests.ps1</text>
+            <text x="115" y="198" text-anchor="middle" class="muted">统一测试入口</text>
+            <line x1="195" y1="182" x2="250" y2="182" marker-end="url(#arrowUt)"></line>
+            <rect class="box" x="255" y="145" width="160" height="75" rx="12"></rect>
+            <text x="335" y="176" text-anchor="middle" class="title">test_*.py</text>
+            <text x="335" y="198" text-anchor="middle" class="muted">Python runner</text>
+
+            <path d="M 415 160 L 490 80" marker-end="url(#arrowUt)"></path>
+            <rect class="box" x="495" y="45" width="185" height="75" rx="12"></rect>
+            <text x="587" y="76" text-anchor="middle" class="title">源码契约检查</text>
+            <text x="587" y="98" text-anchor="middle" class="muted">接口 / feature gate / pinning</text>
+
+            <path d="M 415 182 L 490 182" marker-end="url(#arrowUt)"></path>
+            <rect class="box" x="495" y="145" width="185" height="75" rx="12"></rect>
+            <text x="587" y="176" text-anchor="middle" class="title">配置契约检查</text>
+            <text x="587" y="198" text-anchor="middle" class="muted">PlatformIO / CMake / 分区</text>
+
+            <path d="M 415 205 L 490 285" marker-end="url(#arrowUt)"></path>
+            <rect class="box box-warn" x="495" y="250" width="185" height="75" rx="12"></rect>
+            <text x="587" y="281" text-anchor="middle" class="title">host-side C++</text>
+            <text x="587" y="303" text-anchor="middle" class="muted">g++ 编译 assert tests</text>
+
+            <line x1="680" y1="82" x2="745" y2="145" marker-end="url(#arrowUt)"></line>
+            <line x1="680" y1="182" x2="740" y2="182" marker-end="url(#arrowUt)"></line>
+            <line x1="680" y1="287" x2="745" y2="220" marker-end="url(#arrowUt)"></line>
+            <rect class="box" x="750" y="145" width="170" height="75" rx="12"></rect>
+            <text x="835" y="176" text-anchor="middle" class="title">Pass / Fail</text>
+            <text x="835" y="198" text-anchor="middle" class="muted">阻止架构边界漂移</text>
+
+            <path d="M 920 182 L 970 105" marker-end="url(#arrowUt)"></path>
+            <rect class="box box-block" x="975" y="70" width="120" height="62" rx="12"></rect>
+            <text x="1035" y="96" text-anchor="middle" class="title">无正式 UT</text>
+            <text x="1035" y="115" text-anchor="middle" class="muted">Unity/GTest 未接入</text>
+
+            <path d="M 920 198 L 970 260" marker-end="url(#arrowUt)"></path>
+            <rect class="box box-warn" x="975" y="230" width="120" height="62" rx="12"></rect>
+            <text x="1035" y="256" text-anchor="middle" class="title">SmokeBuild</text>
+            <text x="1035" y="275" text-anchor="middle" class="muted">可选 PlatformIO</text>
+
+            <text x="35" y="350" class="muted">结论：当前“UT”主要覆盖纯逻辑 reducer/mapper 的 host assert，以及源码/配置/文档 contract；硬件行为仍依赖指定固件构建和上板验证。</text>
+          </svg>
         </div>
         <table>
           <tr><th>层级</th><th>命令 / 入口</th><th>覆盖范围</th><th>局限</th></tr>
@@ -978,6 +1572,9 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           <tr><td><code>test_dashboard_no_auto_page_contract.py</code></td><td>防止 demo metrics 再引入自动翻页。</td></tr>
           <tr><td><code>test_runtime_contract.py</code></td><td>ESP-IDF runtime/event/service 骨架。</td></tr>
           <tr><td><code>test_runtime_plan_contract.py</code></td><td>Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。</td></tr>
+          <tr><td><code>test_idf_audio_session_contract.py</code></td><td>ESP-IDF AudioSession 独立构建环境、CMake feature gate 和 <code>i2s_std</code> 初始化边界。</td></tr>
+          <tr><td><code>test_idf_wifi_service_contract.py</code></td><td>ESP-IDF Wi-Fi service 的 <code>esp_wifi</code> / <code>esp_netif</code> / 后台重连边界。</td></tr>
+          <tr><td><code>test_idf_cloud_transport_contract.py</code></td><td>ESP-IDF <code>esp_http_client</code> ASR/Chat/CosyVoice SSE transport 和 AudioSession TTS 播放边界。</td></tr>
           <tr><td><code>test_project_config_contract.py</code></td><td>PlatformIO/ESP-IDF 构建约束，包括 ESP-IDF 双核环境和 <code>esp_lcd</code> 编译 workaround。</td></tr>
           <tr><td><code>test_ai_framework.py</code></td><td>AI 配置、BOOT reducer、状态机、UI 映射、task/queue 所有权和 main feature gate。</td></tr>
           <tr><td><code>test_dashboard_ai_ui_contract.py</code></td><td>独立 AI 页面只读取 UI-facing snapshot，不直接调用 cloud、audio 或 Assistant 命令。</td></tr>
@@ -1024,7 +1621,7 @@ env.Append(FLASH_EXTRA_IMAGES=[("0xC10000", str(srmodels))])</code></pre>
           </article>
           <article class="card">
             <h3>ESP-IDF 第一阶段已接入 AI</h3>
-            <p>AI、Cloud 和 Wi-Fi task 已固定到 Core 0，AI 页面切换经 runtime event 交给 Core 1 UI；真实音频和云 transport 仍待迁移。</p>
+            <p>AI、Cloud 和 Wi-Fi task 已固定到 Core 0，AI 页面切换经 runtime event 交给 Core 1 UI；AudioSession、Wi-Fi 和 Qwen/CosyVoice transport 已迁入 ESP-IDF，基础录音/回复已确认。</p>
           </article>
         </div>
       </section>

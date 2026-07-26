@@ -11,7 +11,7 @@
 | `DashboardApp_Init()` | `main.cpp`, `UiService` | 初始化 metrics 和 dashboard view |
 | `DashboardApp_Tick(uint32_t nowMs)` | `main.cpp`, `UiService` | 推进 demo 数据和 UI 更新 |
 | `DashboardApp_SetRenderWorkMs(uint32_t renderWorkMs)` | `main.cpp`, `UiService` | 回传 LVGL 渲染耗时 |
-| `DashboardApp_ShowAiPage()` | AI Button | 直接显示独立 AI 页面 |
+| `DashboardApp_ShowAiPage()` | AI Button（Arduino）/ `UiService`（ESP-IDF） | 显示独立 AI 页面；ESP-IDF 下由 `ShowAiPage` runtime event 转到 UI owner 执行 |
 | `DashboardApp_NextPage()` | 触摸、串口、语音命令 | 切换到下一页 |
 | `DashboardApp_PreviousPage()` | 触摸、串口、语音命令 | 切换到上一页 |
 | `DashboardApp_SetModeChangedCallback(...)` | `main.cpp` | 注册档位变化回调 |
@@ -158,7 +158,7 @@ struct BikeMbCloudJob {
 | --- | --- |
 | `BikeMbQwenAsr_WriteRequestJson(...)` | 分块生成 `qwen3-asr-flash` Base64 WAV JSON |
 | `BikeMbQwenChat_WriteRequestJson(...)` | 生成当前运行时 `qwen-plus` 短回答请求 |
-| `BikeMbQwenChat_CopyBoundedAnswer(...)` | 把回答限制在 `384 bytes` |
+| `BikeMbQwenChat_CopyBoundedAnswer(...)` | 把回答限制在 `192 bytes`，并做 UTF-8 安全截断 |
 | `BikeMbCosyVoice_WriteRequestJson(...)` | 生成 `cosyvoice-v3-flash` SSE 请求 |
 | `BikeMbCosyVoice_HandleSseLineWithStream(...)` | 跨 SSE 行连续解码 Base64 PCM |
 | `BikeMbDeepSeek_WriteRequestJson(...)` | 已实现但当前 Worker 未调用的备用 adapter |
@@ -205,7 +205,7 @@ Wi-Fi task 每秒轮询，断开时每 10 秒重试，只通过 `BikeMbAiAssista
 
 | 接口 | 说明 |
 | --- | --- |
-| `DashboardApp_ShowAiPage()` | 显示独立 AI 页面；AI 按键稳定按下时调用 |
+| `DashboardApp_ShowAiPage()` | 显示独立 AI 页面；Arduino 路径由 AI 按键稳定按下时调用，ESP-IDF 路径由 `UiService` 消费 `ShowAiPage` event 后调用 |
 | `BikeMbAiUiState_FromSnapshot(...)` | 把业务 snapshot 映射为 UI-facing 状态和文案 |
 
 后台任务不得访问 LVGL。当前 AI 页面只展示 snapshot；取消、重试和停止尚未绑定触摸命令。

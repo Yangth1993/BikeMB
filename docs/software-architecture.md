@@ -9,9 +9,9 @@
 - 默认路径：`PlatformIO + Arduino`，入口在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `setup()` / `loop()`。
 - 迁移路径：`PlatformIO + ESP-IDF`，入口也在 [main.cpp](/D:/MyProject/BikeMB/src/firmware/bikemb/src/main.cpp)，使用 `app_main()`。
 
-当前 Arduino 路径仍是已上板验证最多的路径，承载 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 AI 语音闭环。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。
+当前 Arduino 路径仍是已上板验证最多的基础回归路径，承载 LVGL dashboard、触摸、音频自检、档位播报、直接语音识别测试和 Arduino 版 AI 语音闭环。AI 初版已经包含 BOOT 键、纯状态机、控制 task、异步 Wi-Fi、AudioSession 录音、Qwen ASR、Qwen Chat、CosyVoice TTS、喇叭播放和独立 AI 页面。默认固件仍关闭 AI；真实云链路只在专用测试环境启用。DeepSeek adapter 已实现但未接入 CloudWorker，音乐流和点歌仍是计划能力。
 
-ESP-IDF 路径已经完成框架迁移第一阶段：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 的 ESP-IDF codec/I2S 初始化已完成第一轮上板验证，Qwen ASR、Qwen Chat 和 CosyVoice TTS 的 ESP-IDF HTTPS/SSE transport 已能构建，但 ESP-IDF 启动日志、发声板测、取消和完整语音闭环还没有完成回归，所以不能关闭 ADR-0004。
+ESP-IDF 路径已经完成语音助手框架迁移的主要代码路径：产品入口使用 BikeMB `app_main()`，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task。AudioSession 已迁到 ESP-IDF `driver/i2s_std.h`，Wi-Fi 已迁到 `esp_wifi` / `esp_netif` / `nvs_flash`，Qwen ASR、Qwen Chat 和 CosyVoice TTS 已迁到 `esp_http_client` + SSE/Base64 PCM 路径。2026-07-26 用户已确认 ESP-IDF 云端语音固件录音和基础回复正常，调优版可作为当前稳定语音助手版本保存；但取消回归、长稳资源基线和 audio underrun 仍未完成，所以 ADR-0004 还不能关闭。
 
 ## Bootloader 与双核启动链路
 
@@ -85,43 +85,42 @@ flowchart TB
 
 根据 [ADR-0004](/D:/MyProject/BikeMB/docs/architecture/adr/0004-idf-dual-core-before-music-service.md)，完成 ESP-IDF 双核迁移是正式 `MusicService`、产品音乐流和点歌开发的强制前置条件。门禁关闭期间可以做隔离的 MP3 decoder、HTTPS stream 和资源占用 spike，也可以维护接口、mock 与测试，但不得把 `MusicService` 或点歌行为接入产品运行路径。
 
-门禁只有在以下条件全部满足后才能关闭：
+门禁状态图：
 
-1. 产品固件从 BikeMB `app_main()` 启动，`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，Arduino 路径降为 bring-up/回归用途。
-2. LVGL 只由 `bike_ui` 访问；跨核输入、状态和 UI 更新只通过 queue/event/snapshot 传递。
-3. AI control、Cloud/Wi-Fi、AudioSession、语音输入输出都由 ESP-IDF runtime/service 管理，不再从 Arduino `setup()` / `loop()` 启动或轮询。
-4. I2S0、ES7210 和 ES8311 仍只有一个运行时 owner；DMA buffer 不跨队列复制整段音频，取消和超时路径可回收所有权。
-5. 双核构建、合同测试和板级启动/触摸/显示/录音/TTS 回归通过，并记录 heap、PSRAM、task stack、UI 延迟和 audio underrun 基线。
+```mermaid
+flowchart LR
+  Gate["ADR-0004 门禁"] --> A["已完成<br/>app_main + 双核 task"]
+  Gate --> B["已完成<br/>LVGL 归 bike_ui"]
+  Gate --> C["已完成<br/>AI / Wi-Fi / Cloud / AudioSession 迁入 ESP-IDF"]
+  Gate --> D["已完成<br/>基础录音 + 回复板测"]
+  Gate --> E["未完成<br/>取消 / 异常 / 长稳资源 / underrun"]
+  E --> Block["门禁未关闭<br/>MusicService / 点歌继续阻塞"]
+```
 
-当前状态：**门禁未满足**。代码层第一阶段已经完成：ESP-IDF `app_main()` 会启动 `bike_runtime` Core 0 和 `bike_ui` Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 已固定到 Core 0，BOOT/AI 键页面切换通过 runtime event 交给 Core 1 UI task 执行。AudioSession 已在 ESP-IDF `driver/i2s_std.h` 路径上完成 codec/I2S 初始化上板验证；Qwen ASR、Qwen Chat、CosyVoice TTS 已有 ESP-IDF `esp_http_client` 构建路径。门禁仍需 ESP-IDF 启动日志、录音、TTS 发声、取消和完整资源基线确认；所以 `MusicService` 和点歌保持“计划中”，不应作为开发工程师的当前实现任务。
+当前判断：代码层和基础板测已经推进到 ESP-IDF 云端语音助手可用版本，但还缺取消回归、断网/超时异常路径、长稳资源基线、UI 延迟和 audio underrun 证据。因此 `MusicService` 和点歌仍是计划能力，不应作为开发工程师的当前实现任务。
 
 ## ESP-IDF 双核框架迁移
 
-这一节描述当前“框架迁移”本身，不等同于完整功能迁移。它的目标是先把产品运行模型写清楚，让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。
+迁移目标：让后续音频、云、音乐能力都接入同一套 task、事件和所有权模型。
 
-### 已完成的框架层
+```mermaid
+flowchart TB
+  APP["app_main()"] --> RT["bike_runtime<br/>Core 0"]
+  APP --> UI["bike_ui<br/>Core 1 / LVGL owner"]
+  RT --> BTN["AI button poll"]
+  RT --> AI["bikemb_ai"]
+  RT --> WIFI["bikemb_wifi<br/>esp_wifi"]
+  AI --> CLOUD["bikemb_cloud<br/>esp_http_client"]
+  AI --> AUDIO["AudioSession<br/>i2s_std + ES8311/ES7210"]
+  BTN --> EVENT["ShowAiPage event"]
+  EVENT --> UI
+  CLOUD --> AUDIO
+  UI --> DASH["Dashboard / AI Page"]
+```
 
-| 项 | 当前实现 |
-| --- | --- |
-| 产品入口 | `BIKE_MB_USE_ESPIDF_RUNTIME` 构建进入 BikeMB `app_main()`，不经过 Arduino `setup()` / `loop()`。 |
-| Core 0 runtime | `BikeRuntime_Start()` 创建 `bike_runtime`，负责系统 tick、dashboard tick、AI button 轮询和服务启动边界。 |
-| Core 1 UI | `UiService_Start()` 创建 `bike_ui`，它是 LVGL 和 Dashboard 的唯一运行时 owner。 |
-| Task/core 规划 | `bike_runtime_plan.*` 记录 `bike_runtime`、`bike_ui`、`bikemb_ai`、`bikemb_cloud`、`bikemb_wifi`、`ai_button_poll`、`audio_session` 的归属。 |
-| AI/Cloud/Wi-Fi task | `bikemb_ai`、`bikemb_cloud`、`bikemb_wifi` 均使用 `xTaskCreatePinnedToCore(..., BIKE_RUNTIME_CORE_RUNTIME)` 固定 Core 0。 |
-| 跨核 UI 命令 | AI button 不直接调用 Dashboard/LVGL；按下时先投递 `ShowAiPage` event，再通知 Assistant 开始处理。 |
-| 构建 workaround | ESP-IDF `esp_lcd` 组件局部使用 `-O0`，绕开当前 xtensa GCC 编译 `esp_lcd_panel_rgb.c` 的 internal compiler error。 |
+已完成：双核 task 归属、LVGL 单 owner、AI 页面跨核事件、ESP-IDF AudioSession、ESP-IDF Wi-Fi、ESP-IDF Qwen/CosyVoice transport，以及 2026-07-26 基础录音/回复板测。
 
-### 仍未完成的迁移层
-
-| 项 | 为什么还不能算完成 |
-| --- | --- |
-| AudioSession ESP-IDF 回归 | codec/I2S 初始化已迁到 ESP-IDF `driver/i2s_std.h` 并上板到 `session ready`；录音、TTS 发声、取消和 underrun 基线仍需回归。 |
-| Wi-Fi/HTTPS transport | ESP-IDF 下 Wi-Fi、Qwen ASR、Qwen Chat、CosyVoice SSE/TTS 已有构建路径；仍需板级云闭环和异常/取消回归。 |
-| 语音闭环板级验证 | 还没在 ESP-IDF 双核 env 上完成录音、STT、LLM、TTS、播放和取消回归。 |
-| 资源基线 | 还没记录 heap、largest block、PSRAM、task stack high-water mark、UI 延迟和 audio underrun。 |
-| 架构门禁验收 | ADR-0004 要求软件架构根据代码、构建、板级验证和资源数据一起确认，不能只看能编译。 |
-
-当前对开发工程师的实现约束：新功能只允许接入 `bike_runtime` / `bike_ui` / queue-event-snapshot 模型；除 bring-up/回归用途外，不应再把产品能力写回 Arduino `loop()`。
+未完成：取消回归、断网/超时/短录音/TTS 失败等异常路径、长稳资源基线、UI 延迟和 audio underrun 汇总。新功能只允许接入 `bike_runtime` / `bike_ui` / queue-event-snapshot 模型；除 bring-up/回归用途外，不应再把产品能力写回 Arduino `loop()`。
 
 ## 总体模块图
 
@@ -273,7 +272,7 @@ UI 分层的原则：触摸、语音、串口测试都不能直接操作 LVGL �
 | `DashboardApp_Init()` | `main.cpp` / `UiService` | 初始化 `MetricsService`，创建 dashboard view。 |
 | `DashboardApp_Tick(uint32_t nowMs)` | `main.cpp` / `UiService` | 更新 demo 数据、刷新 UI label 和波形。 |
 | `DashboardApp_SetRenderWorkMs(uint32_t renderWorkMs)` | `main.cpp` / `UiService` | 把 LVGL 渲染耗时反馈给指标服务。 |
-| `DashboardApp_ShowAiPage()` | AI Button | 稳定按下 AI 键时直接显示独立 AI 页面。 |
+| `DashboardApp_ShowAiPage()` | AI Button（Arduino）/ `UiService`（ESP-IDF） | 显示独立 AI 页面；ESP-IDF 下由 `ShowAiPage` runtime event 转到 Core 1 UI owner 执行。 |
 | `DashboardApp_NextPage()` | 触摸/音频/语音命令 | 下一页。 |
 | `DashboardApp_PreviousPage()` | 触摸/音频/语音命令 | 上一页。 |
 | `DashboardApp_SetModeChangedCallback(...)` | `main.cpp` | 注册档位变化 callback，用于档位播报。 |
@@ -317,7 +316,7 @@ AI 状态沿用同一 UI 边界：`DashboardApp_Tick()` 复制 `BikeMbAiSnapshot
 - CST816 左右滑动手势。
 - 音频自检环境下串口 `n/p`。
 - 直接语音识别环境下识别到上一页/下一页。
-- AI 按键稳定按下时调用 `DashboardApp_ShowAiPage()`，立即切到 AI 页面。
+- AI 按键稳定按下时切到 AI 页面；Arduino 路径可直接调用 `DashboardApp_ShowAiPage()`，ESP-IDF 路径先投递 `ShowAiPage` event，再由 `bike_ui` 执行。
 
 ## AI 助手控制框架
 
@@ -562,7 +561,7 @@ sequenceDiagram
 | `esp32-s3-touch-lcd-1-85c-ai-voice-cloud-test` | Arduino | Qwen ASR + Qwen Chat + CosyVoice 真实云闭环。 | AI + AudioSession，测试专用 insecure TLS |
 | `esp32-s3-touch-lcd-1-85c-idf` | ESP-IDF | Runtime/Event/Service 迁移构建。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1` |
 | `esp32-s3-touch-lcd-1-85c-idf-audio-session-test` | ESP-IDF | AudioSession codec/I2S 初始化迁移验证。 | `BIKE_MB_USE_ESPIDF_RUNTIME=1`，`BIKE_MB_IDF_ENABLE_AUDIO_SESSION=ON` |
-| `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` | ESP-IDF | 真实云迁移验证，覆盖 Qwen ASR、Qwen Chat 和 CosyVoice SSE/TTS 构建路径。 | AI + AudioSession，发声板测需单独确认 |
+| `esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` | ESP-IDF | 当前 ESP-IDF 云端语音助手验收环境，覆盖录音、Qwen ASR、Qwen Chat、CosyVoice SSE/TTS 和 AudioSession 播放。 | AI + AudioSession，用户已确认基础录音/回复正常；取消和长稳基线待验收 |
 
 ### 默认分区
 
@@ -719,7 +718,7 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `UiService_Start(...)` | 启动拥有 LVGL 的 UI task。 |
 | `UiTask(...)` | 初始化 LVGL/dashboard，消费事件，并调用 `LvglPort_Run()`。 |
 
-当前边界：ESP-IDF runtime 已经承接产品入口、Core 0/Core 1 task 归属和 AI 页面跨核事件。AudioSession 的 codec/I2S 初始化已迁入 ESP-IDF 并完成 `session ready` 上板验证；但录音、TTS 播放、取消和云端真实 transport 仍没有完成 ESP-IDF 回归。关闭 ADR-0004 前需要继续补齐 ESP-IDF transport/audio adapter 的板级语音闭环。
+当前边界：ESP-IDF runtime 已经承接产品入口、Core 0/Core 1 task 归属、AI 页面跨核事件、AudioSession codec/I2S、Wi-Fi STA 和 Qwen/CosyVoice 云端 transport。`esp32-s3-touch-lcd-1-85c-idf-ai-voice-cloud-test` 已被用户确认基础录音和回复正常。关闭 ADR-0004 前仍要补齐取消、长稳资源基线、UI 延迟和 audio underrun 证据。
 
 ## 验证入口
 
@@ -728,6 +727,18 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 目前没有引入 Unity、GoogleTest、Catch2、doctest 这类正式 C/C++ UT 框架。仓库里的 C++ “单元级”测试是 host-side assert tests：由 Python 脚本调用本机 `g++ -std=c++17 -Wall -Wextra -Werror` 编译纯逻辑 `.cpp` 和 `tools/tests/*_test.cpp`，运行后依靠 `assert()` 判断结果。这种方式适合测试 reducer、纯状态机、配置规划、JSON/PCM 小解析器；不适合测试 FreeRTOS 调度、I2S DMA、Wi-Fi、LCD 或真实板级时序。
 
 测试分三层：
+
+```mermaid
+flowchart LR
+  Change["代码/文档变更"] --> Contract["tools/run-tests.ps1<br/>27 contract tests"]
+  Contract --> Smoke{"需要固件烟测?"}
+  Smoke -->|"是"| DefaultBuild["run-tests.ps1 -SmokeBuild<br/>默认 PlatformIO env"]
+  Smoke -->|"否"| Done["本轮轻量验证完成"]
+  DefaultBuild --> Target{"涉及 ESP-IDF / 音频 / 云?"}
+  Target -->|"是"| IdfBuild["platformio run -e<br/>指定 ESP-IDF env"]
+  Target -->|"否"| Done
+  IdfBuild --> Board["上板验证<br/>串口 + UI + 音频 + 资源"]
+```
 
 | 层级 | 命令 / 入口 | 覆盖范围 | 局限 |
 | --- | --- | --- | --- |
@@ -746,6 +757,7 @@ py -X utf8 -m platformio run -s -d src\firmware\bikemb -e esp32-s3-touch-lcd-1-8
 | `test_runtime_contract.py` | ESP-IDF runtime/event/service 骨架。 |
 | `test_runtime_plan_contract.py` | Runtime task/core 规划、AI/Cloud/Wi-Fi Core 0 pinning、AI 页面跨核事件边界。 |
 | `test_idf_audio_session_contract.py` | ESP-IDF AudioSession 独立构建环境、CMake feature gate 和 `i2s_std` 初始化边界。 |
+| `test_idf_wifi_service_contract.py` | ESP-IDF Wi-Fi service 的 `esp_wifi` / `esp_netif` / 后台重连边界。 |
 | `test_idf_cloud_transport_contract.py` | ESP-IDF real cloud 环境、`esp_http_client` ASR/Chat/CosyVoice SSE transport 和 AudioSession TTS 播放边界。 |
 | `test_ai_framework.py` | AI 配置、BOOT 键 reducer、AI 状态机、UI 映射、task/queue 所有权和 main feature gate。 |
 | `test_dashboard_ai_ui_contract.py` | Dashboard 只从 snapshot 派生 AI 页面，不直接依赖 cloud/audio/Assistant 命令接口。 |
@@ -785,4 +797,4 @@ py -X utf8 -m platformio run -e esp32-s3-touch-lcd-1-85c-idf
 - 取消能使旧 request 失效并停止本地音频，但不能主动中断阻塞 HTTPS；单一 CloudWorker 会延迟后续云 job。
 - CosyVoice PCM 当前完整缓冲后播放，PSRAM 上限约 625 KiB，不是低延迟流式播放。
 - HTTPS MP3 解码器、Stream Player、Music Service 和未来点歌 resolver 尚未实现。
-- ESP-IDF runtime 已完成代码层第一阶段迁移，AudioSession codec/I2S 初始化已完成第一轮上板验证，Qwen ASR/Chat/CosyVoice transport 已构建；录音/TTS 发声/取消板级语音闭环和完整资源基线尚未完成。
+- ESP-IDF runtime 已完成语音助手主要代码路径迁移，并已有基础录音/回复板级确认；取消、断网/超时异常、长稳资源基线和 audio underrun 尚未完成验收。

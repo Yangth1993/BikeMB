@@ -46,7 +46,7 @@ View 层负责把 `BikeMbDashboardMetrics` 映射为页面展示，并处理当�
 
 ### Runtime 骨架
 
-ESP-IDF Runtime 当前已经承接产品入口和第一阶段双核模型：`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0。AudioSession codec/I2S 初始化已在 ESP-IDF 上到达 `session ready`；Qwen ASR、Qwen Chat 和 CosyVoice SSE/TTS 已有 ESP-IDF `esp_http_client` transport 构建路径；新功能迁入前仍需继续补齐发声板测、取消、板级回归和资源基线。
+ESP-IDF Runtime 当前已经承接产品入口和第一阶段双核模型：`bike_runtime` 固定 Core 0，`bike_ui` 固定 Core 1，AI Assistant、Cloud Worker、Wi-Fi Worker 固定 Core 0。AudioSession codec/I2S 初始化已在 ESP-IDF 上到达 `session ready`，Wi-Fi 使用 `esp_wifi` / `esp_netif`，Qwen ASR、Qwen Chat 和 CosyVoice SSE/TTS 使用 ESP-IDF `esp_http_client` transport。2026-07-26 用户已确认 ESP-IDF 云端语音固件基础录音和回复正常；新功能迁入前仍需补齐取消、异常路径、长稳资源基线和 audio underrun 验收。
 
 ## AI 助手模块规则
 
